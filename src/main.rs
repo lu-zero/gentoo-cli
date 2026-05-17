@@ -1,4 +1,5 @@
 mod cli;
+mod depgraph;
 mod error;
 
 use std::str::FromStr;
@@ -25,7 +26,7 @@ async fn main() {
     let cli = cli::Cli::parse();
 
     let result = match &cli.applet {
-        Some(applet) => run_applet(applet),
+        Some(applet) => run_applet(applet, &cli),
         None => {
             if cli.atoms.is_empty() {
                 eprintln!("em: no atoms or applet specified. Use --help for usage.");
@@ -51,7 +52,7 @@ fn run_emerge(cli: &cli::Cli) -> Result<()> {
     Err(error::Error::NotImplemented("emerge".into()))
 }
 
-fn run_applet(applet: &Applet) -> Result<()> {
+fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
     match applet {
         Applet::Ebuild { ebuild_path, phase } => {
             eprintln!("ebuild: path={} phases={:?}", ebuild_path, phase);
@@ -84,7 +85,7 @@ fn run_applet(applet: &Applet) -> Result<()> {
             eprintln!("mirror: args={:?}", args);
             Err(error::Error::NotImplemented("mirror".into()))
         }
-        Applet::Query { command } => run_query(command),
+        Applet::Query { command } => run_query(command, globals),
         Applet::Clean { target } => run_clean(target),
         Applet::Use { args } => {
             eprintln!("use: args={:?}", args);
@@ -179,7 +180,7 @@ fn run_maint(command: &Option<MaintCommand>) -> Result<()> {
     }
 }
 
-fn run_query(command: &QueryCommand) -> Result<()> {
+fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
     match command {
         QueryCommand::Belongs { file } => {
             eprintln!("equery belongs: {:?}", file);
@@ -197,8 +198,17 @@ fn run_query(command: &QueryCommand) -> Result<()> {
         }
         QueryCommand::Depgraph { atom } => {
             let parsed = parse_atoms(atom);
-            eprintln!("equery depgraph: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery depgraph".into()))
+            let atoms: Vec<String> = parsed.iter().map(|d| d.to_string()).collect();
+            if atoms.is_empty() {
+                return Err(error::Error::NotImplemented("equery depgraph: no valid atoms".into()));
+            }
+            let repo_path = std::path::PathBuf::from(&globals.repo);
+            if !repo_path.is_dir() {
+                return Err(error::Error::Other(
+                    format!("repo not found at {}", globals.repo),
+                ));
+            }
+            depgraph::depgraph(&repo_path, &atoms, &globals.arch, None)
         }
         QueryCommand::Files { atom } => {
             let parsed = parse_atoms(atom);

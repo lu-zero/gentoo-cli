@@ -1,5 +1,7 @@
-use clap::{Parser, Subcommand};
+use std::str::FromStr;
 
+use clap::{Parser, Subcommand};
+use gentoo_core::Arch;
 #[derive(Parser)]
 #[command(
     name = "em",
@@ -22,6 +24,12 @@ pub struct Cli {
 
     #[arg(short = 'D', long)]
     pub deep: bool,
+
+    #[arg(long, value_name = "ARCH", default_value_t = Arch::current(), value_parser = parse_arch)]
+    pub arch: Arch,
+
+    #[arg(long, value_name = "PATH", default_value = "/var/db/repos/gentoo")]
+    pub repo: String,
 
     #[arg(short = 'N', long)]
     pub newuse: bool,
@@ -398,4 +406,8 @@ pub enum LogCommand {
     List { limit: Option<u32> },
     #[command(about = "Show merge times for a package")]
     Time { atom: Option<String> },
+}
+
+fn parse_arch(s: &str) -> std::result::Result<Arch, String> {
+    Ok(Arch::from_str(s).unwrap())
 }

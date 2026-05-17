@@ -2,7 +2,7 @@
 name = "portage-cli"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.92"
 authors = ["Luca Barbato <lu_zero@gentoo.org>"]
 license = "MIT"
 description = "Gentoo Portage command-line tools (em)"
@@ -15,8 +15,13 @@ name = "em"
 path = "src/main.rs"
 
 [dependencies]
+gentoo-core = "0.4"
 portage-atom = "0.8"
+portage-atom-pubgrub = { path = "../portage-atom-pubgrub" }
+portage-metadata = "0.6"
+portage-repo = { path = "../portage-repo" }
 clap = { version = "4", features = ["derive"] }
+itertools = "0.14"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 thiserror = "2"
 
