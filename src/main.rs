@@ -2,6 +2,7 @@ mod cli;
 mod depgraph;
 mod error;
 mod query;
+mod regen;
 mod search;
 
 use std::str::FromStr;
@@ -28,7 +29,7 @@ async fn main() {
     let cli = cli::Cli::parse();
 
     let result = match &cli.applet {
-        Some(applet) => run_applet(applet, &cli),
+        Some(applet) => run_applet(applet, &cli).await,
         None => {
             if cli.atoms.is_empty() {
                 eprintln!("em: no atoms or applet specified. Use --help for usage.");
@@ -54,7 +55,7 @@ fn run_emerge(cli: &cli::Cli) -> Result<()> {
     Err(error::Error::NotImplemented("emerge".into()))
 }
 
-fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
+async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
     match applet {
         Applet::Ebuild { ebuild_path, phase } => {
             eprintln!("ebuild: path={} phases={:?}", ebuild_path, phase);
@@ -74,9 +75,9 @@ fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
             eprintln!("depclean: atoms={:?}", parsed);
             Err(error::Error::NotImplemented("depclean".into()))
         }
-        Applet::Regen { repos } => {
-            eprintln!("regen: repos={:?}", repos);
-            Err(error::Error::NotImplemented("regen".into()))
+        Applet::Regen { repos, output, repos_dir, jobs, dedup } => {
+            let repo_path = repos.first().map_or(globals.repo.as_str(), |r| r.as_str());
+            regen::run(repo_path, repos_dir.as_deref(), output.clone(), *jobs, *dedup).await
         }
         Applet::Quickpkg { atoms } => {
             let parsed = parse_atoms(atoms);

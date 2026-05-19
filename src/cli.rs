@@ -156,8 +156,19 @@ pub enum Applet {
 
     #[command(about = "Regenerate metadata cache")]
     Regen {
-        #[arg(trailing_var_arg = true)]
         repos: Vec<String>,
+        /// Write cache files to this directory instead of metadata/md5-cache
+        #[arg(short = 'o', long, value_name = "DIR")]
+        output: Option<std::path::PathBuf>,
+        /// Directory containing master repositories
+        #[arg(long, value_name = "DIR")]
+        repos_dir: Option<String>,
+        /// Number of parallel workers
+        #[arg(short = 'j', long)]
+        jobs: Option<usize>,
+        /// Deduplicate top-level dep tokens before writing
+        #[arg(long)]
+        dedup: bool,
     },
 
     #[command(about = "Create binary packages from installed files")]
