@@ -201,9 +201,7 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             Err(error::Error::NotImplemented("equery check".into()))
         }
         QueryCommand::Depends { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery depends: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery depends".into()))
+            query::depends::run(&std::path::PathBuf::from(&globals.repo), atom)
         }
         QueryCommand::Depgraph { atom } => {
             let parsed = parse_atoms(atom);
