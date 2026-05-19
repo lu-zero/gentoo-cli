@@ -31,7 +31,7 @@ pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
     Ok(())
 }
 
-fn dep_matches_cpv(dep: &Dep, cpv: &Cpv) -> bool {
+pub fn dep_matches_cpv(dep: &Dep, cpv: &Cpv) -> bool {
     if dep.cpn != cpv.cpn {
         return false;
     }

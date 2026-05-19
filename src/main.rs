@@ -226,9 +226,7 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             Err(error::Error::NotImplemented("equery hasuse".into()))
         }
         QueryCommand::Keywords { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery keywords: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery keywords".into()))
+            query::keywords::run(&std::path::PathBuf::from(&globals.repo), atom)
         }
         QueryCommand::List { pattern } => {
             query::list::run(&std::path::PathBuf::from(&globals.repo), pattern)
