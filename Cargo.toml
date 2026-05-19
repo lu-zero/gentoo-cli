@@ -14,8 +14,12 @@ categories = ["command-line-utilities", "development-tools"]
 name = "em"
 path = "src/main.rs"
 
+[features]
+lasso = ["gentoo-interner/lasso", "portage-repo/lasso"]
+
 [dependencies]
 gentoo-core = "0.4"
+gentoo-interner = "0.1"
 portage-atom = "0.8"
 portage-atom-pubgrub = "0.2"
 portage-metadata = "0.6"
@@ -32,3 +36,4 @@ codegen-units = 1
 
 [patch.crates-io]
 portage-metadata = { path = "../portage-metadata" }
+gentoo-interner = { path = "../gentoo-interner" }
