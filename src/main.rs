@@ -249,9 +249,7 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             Err(error::Error::NotImplemented("equery uses".into()))
         }
         QueryCommand::Which { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery which: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery which".into()))
+            query::which::run(&std::path::PathBuf::from(&globals.repo), atom)
         }
     }
 }
