@@ -42,7 +42,10 @@ pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
         // Use the best (latest) match
         let best = matches.last().unwrap();
         let cpv = best.cpv();
-        let entry = repo.cache_entry(cpv).map_err(|e| Error::Other(e.to_string()))?;
+        let entry = repo
+            .cache_entry(cpv)
+            .map_err(|e| Error::Other(e.to_string()))?
+            .ok_or_else(|| Error::Other(format!("no cache entry for {cpv} — run `em regen`")))?;
 
         println!("[{cpv}]");
         let mut flags: Vec<_> = entry.metadata.iuse.iter().collect();

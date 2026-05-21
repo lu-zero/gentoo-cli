@@ -95,21 +95,16 @@ impl PackageRepository for Adapter<'_> {
 }
 
 fn load_repo(repo: &Repository) -> RepoData {
-    let ebuilds = repo
-        .ebuilds()
-        .expect("failed to walk ebuilds")
-        .collect_vec();
-
     let mut cpns_set: HashSet<Cpn> = HashSet::new();
     let mut versions: HashMap<Cpn, Vec<(Cpv, portage_metadata::CacheEntry)>> = HashMap::new();
 
-    for ebuild in &ebuilds {
-        let cpv = ebuild.cpv().clone();
+    // Iterate the md5-cache tree directly — depgraph requires cache entries,
+    // so anything without one would have been skipped anyway.
+    for (cpv, entry) in repo.cache_entries() {
+        let Ok(entry) = entry else { continue };
         let cpn = cpv.cpn;
-        if let Ok(entry) = repo.cache_entry(&cpv) {
-            cpns_set.insert(cpn);
-            versions.entry(ebuild.cpv().cpn).or_default().push((cpv, entry));
-        }
+        cpns_set.insert(cpn);
+        versions.entry(cpn).or_default().push((cpv, entry));
     }
 
     let mut cpns: Vec<Cpn> = cpns_set.into_iter().collect();

@@ -17,7 +17,7 @@ pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
 
         for ebuild in repo.ebuilds().map_err(|e| Error::Other(e.to_string()))? {
             let cpv = ebuild.cpv();
-            let Ok(entry) = repo.cache_entry(cpv) else {
+            let Ok(Some(entry)) = repo.cache_entry(cpv) else {
                 continue;
             };
             let m = &entry.metadata;

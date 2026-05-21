@@ -39,7 +39,7 @@ pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
         for ebuild in &matches {
             let cpv = ebuild.cpv();
             let mut kw_map: BTreeMap<String, Stability> = BTreeMap::new();
-            if let Ok(entry) = repo.cache_entry(cpv) {
+            if let Ok(Some(entry)) = repo.cache_entry(cpv) {
                 for kw in &entry.metadata.keywords {
                     let arch = kw.arch.as_str().to_owned();
                     if arch != "*" {

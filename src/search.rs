@@ -33,6 +33,7 @@ pub fn run(
                 // -S: search description text
                 repo.cache_entry(cpv)
                     .ok()
+                    .flatten()
                     .map(|e| e.metadata.description.contains(pat))
                     .unwrap_or(false)
             } else {
@@ -46,7 +47,7 @@ pub fn run(
             if name_only {
                 println!("{cpn}");
             } else {
-                let entry = repo.cache_entry(cpv).ok();
+                let entry = repo.cache_entry(cpv).ok().flatten();
                 let info = if homepage {
                     entry
                         .map(|e| e.metadata.homepage.join(" "))
