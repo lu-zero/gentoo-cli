@@ -15,14 +15,24 @@ name = "em"
 path = "src/main.rs"
 
 [features]
-lasso = ["gentoo-interner/lasso", "portage-repo/lasso"]
+lasso = [
+    "portage-atom/lasso",
+    "portage-metadata/lasso",
+    "portage-atom-pubgrub/lasso",
+    "portage-repo/lasso",
+]
+symbol-table = [
+    "portage-atom/symbol-table",
+    "portage-metadata/symbol-table",
+    "portage-atom-pubgrub/symbol-table",
+    "portage-repo/symbol-table",
+]
 
 [dependencies]
-gentoo-core = "0.4"
-gentoo-interner = "0.1"
-portage-atom = "0.8"
-portage-atom-pubgrub = "0.2"
-portage-metadata = "0.6"
+gentoo-core = "0.5"
+portage-atom = "0.9"
+portage-atom-pubgrub = "0.3"
+portage-metadata = "0.7"
 portage-repo = { path = "../portage-repo" }
 clap = { version = "4", features = ["derive"] }
 itertools = "0.14"
@@ -35,5 +45,7 @@ lto = true
 codegen-units = 1
 
 [patch.crates-io]
+portage-atom = { path = "../portage-atom" }
 portage-metadata = { path = "../portage-metadata" }
+portage-atom-pubgrub = { path = "../portage-atom-pubgrub" }
 gentoo-interner = { path = "../gentoo-interner" }

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
-use portage_atom::gentoo_interner::{DefaultInterner, Interned};
+use portage_atom::interner::{DefaultInterner, Interned};
 use portage_atom::{Cpn, Cpv, Dep, Operator};
 use portage_atom_pubgrub::{
     DepClass, IUseDefault, PackageDeps, PackageRepository, PackageVersions,
@@ -184,7 +184,7 @@ pub fn depgraph(
         }
     }
 
-    let mut provider = PortageDependencyProvider::new(adapter, use_config);
+    let mut provider = PortageDependencyProvider::new(adapter, use_config, &[]);
 
     let mut root_deps = Vec::new();
     for target in atoms {
