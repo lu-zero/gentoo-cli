@@ -5,6 +5,7 @@
 #   DEDUP=1             pass --dedup to em regen
 #   LASSO=1             build with --features lasso (lasso interner)
 #   SYMBOL_TABLE=1      build with --features symbol-table (symbol-table interner)
+#   NO_MIMALLOC=1       build with --no-default-features (uses system allocator)
 
 set -euo pipefail
 
@@ -18,16 +19,20 @@ FEATURES=()
 [[ "${LASSO:-0}" == "1" ]] && FEATURES+=("lasso")
 [[ "${SYMBOL_TABLE:-0}" == "1" ]] && FEATURES+=("symbol-table")
 
+NO_DEFAULT_FLAG=""
+[[ "${NO_MIMALLOC:-0}" == "1" ]] && NO_DEFAULT_FLAG="--no-default-features"
+
 FEATURE_FLAGS=""
 BUILD_DESC=""
 if [[ ${#FEATURES[@]} -gt 0 ]]; then
     FEATURE_FLAGS="--features $(IFS=,; echo "${FEATURES[*]}")"
     BUILD_DESC=" (features: $(IFS=,; echo "${FEATURES[*]}"))"
 fi
+[[ -n "$NO_DEFAULT_FLAG" ]] && BUILD_DESC="$BUILD_DESC [no mimalloc]"
 
-if [[ ! -x "$EM" ]] || [[ ${#FEATURES[@]} -gt 0 ]]; then
+if [[ ! -x "$EM" ]] || [[ ${#FEATURES[@]} -gt 0 ]] || [[ -n "$NO_DEFAULT_FLAG" ]]; then
     echo "Building em${BUILD_DESC}..." >&2
-    cargo build --release $FEATURE_FLAGS --manifest-path "$SCRIPT_DIR/Cargo.toml"
+    cargo build --release $NO_DEFAULT_FLAG $FEATURE_FLAGS --manifest-path "$SCRIPT_DIR/Cargo.toml"
 fi
 
 if [[ $# -gt 0 ]]; then JOBS=("$@"); else JOBS=(4 8 16 20 24 32 40); fi

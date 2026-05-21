@@ -5,6 +5,10 @@ mod query;
 mod regen;
 mod search;
 
+#[cfg(feature = "mimalloc")]
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 use std::str::FromStr;
 
 use clap::Parser;
