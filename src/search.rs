@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use portage_atom::{Cpn, Cpv};
-use portage_metadata::CacheEntry;
+use portage_metadata::RawCacheEntry;
 use portage_repo::{CacheReadOpts, Repository, cache_entries_parallel};
 
 use crate::error::{Error, Result};
@@ -115,7 +115,8 @@ fn latest_entry_info(repo: &Repository, cpn: &Cpn, homepage: bool) -> String {
 
 /// Description mode: walks every cache entry across every repo via the
 /// parallel reader, keeps the highest cpv per cpn, then filters on
-/// description content.
+/// description content. Uses `RawCacheEntry` to skip atom-tree parsing —
+/// we only need DESCRIPTION (and optionally HOMEPAGE) per file.
 async fn run_desc(
     repos: &[Repository],
     pat: &str,
@@ -124,15 +125,37 @@ async fn run_desc(
     homepage: bool,
 ) -> Result<()> {
     // latest_per_cpn drops older versions and overlay-duplicates at
-    // discovery time, so we never pay to parse-then-discard them.
+    // discovery time, so we never pay to read-and-parse them.
     let opts = CacheReadOpts {
         latest_per_cpn: true,
         ..Default::default()
     };
-    let mut entries: Vec<(Cpv, CacheEntry)> = cache_entries_parallel(repos, &opts)
+
+    // The closure runs on a worker that owns the file text only for the
+    // duration of the call, so values we want to keep must be cloned.
+    // Filter and pick the single field we'll actually print inside the
+    // closure: non-matches return None (zero allocs); matches allocate
+    // exactly one String (the field needed for output).
+    let pat_owned = pat.to_string();
+    let mut entries: Vec<(Cpv, Option<String>)> =
+        cache_entries_parallel(repos, &opts, move |text| {
+            let raw = RawCacheEntry::new(text);
+            let desc = raw.field("DESCRIPTION").unwrap_or("");
+            if !all && !desc.contains(&pat_owned) {
+                return Ok(None);
+            }
+            let info = if name_only {
+                None
+            } else if homepage {
+                Some(raw.field("HOMEPAGE").unwrap_or("").to_string())
+            } else {
+                Some(desc.to_string())
+            };
+            Ok::<_, portage_repo::Error>(Some(info))
+        })
         .await
         .into_iter()
-        .filter_map(|(cpv, r)| r.ok().map(|e| (cpv, e)))
+        .filter_map(|(cpv, r)| r.ok().flatten().map(|info| (cpv, info)))
         .collect();
 
     // Sort for deterministic output order (HashMap from latest_per_cpn
@@ -144,23 +167,14 @@ async fn run_desc(
             .then_with(|| a.cpn.package.cmp(&b.cpn.package))
     });
 
-    for (cpv, entry) in &entries {
-        let hit = all || entry.metadata.description.contains(pat);
-        if !hit {
-            continue;
-        }
+    for (cpv, info) in &entries {
         let key = format!("{}/{}", cpv.cpn.category, cpv.cpn.package);
-        if name_only {
-            println!("{key}");
-        } else {
-            let info = if homepage {
-                entry.metadata.homepage.join(" ")
-            } else {
-                entry.metadata.description.clone()
-            };
-            println!("{key}: {info}");
+        match info {
+            None => println!("{key}"),
+            Some(s) => println!("{key}: {s}"),
         }
     }
     Ok(())
 }
+
 
