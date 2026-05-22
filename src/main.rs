@@ -139,14 +139,17 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
             name_only,
             homepage,
             pattern,
-        } => search::run(
-            &globals.search_repos(),
-            pattern.as_deref(),
-            *all,
-            *desc,
-            *name_only,
-            *homepage,
-        ),
+        } => {
+            search::run(
+                &globals.search_repos(),
+                pattern.as_deref(),
+                *all,
+                *desc,
+                *name_only,
+                *homepage,
+            )
+            .await
+        }
         Applet::Atom { atoms } => run_atom(atoms),
         Applet::Select { module, args } => {
             eprintln!("select: module={} args={:?}", module, args);

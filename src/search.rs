@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use portage_atom::{Cpn, Cpv};
 use portage_metadata::CacheEntry;
-use portage_repo::Repository;
+use portage_repo::{CacheReadOpts, Repository, cache_entries_parallel};
 
 use crate::error::{Error, Result};
 
-pub fn run(
+pub async fn run(
     repo_paths: &[std::path::PathBuf],
     pattern: Option<&str>,
     all: bool,
@@ -30,7 +30,7 @@ pub fn run(
     let pat = pattern.unwrap_or("");
 
     if search_desc {
-        run_desc(&repos, pat, all, name_only, homepage)
+        run_desc(&repos, pat, all, name_only, homepage).await
     } else {
         run_name(&repos, pat, all, name_only, homepage)
     }
@@ -114,33 +114,35 @@ fn latest_entry_info(repo: &Repository, cpn: &Cpn, homepage: bool) -> String {
 }
 
 /// Description mode: walks every cache entry across every repo via the
-/// parallel iterator, keeps the highest cpv per cpn (first repo wins on
-/// equal versions), then filters on description content.
-fn run_desc(
+/// parallel reader, keeps the highest cpv per cpn, then filters on
+/// description content.
+async fn run_desc(
     repos: &[Repository],
     pat: &str,
     all: bool,
     name_only: bool,
     homepage: bool,
 ) -> Result<()> {
-    let mut entries: Vec<(Cpv, CacheEntry)> = Vec::new();
-    for repo in repos {
-        for (cpv, r) in repo.cache_entries() {
-            if let Ok(entry) = r {
-                entries.push((cpv, entry));
-            }
-        }
-    }
+    // latest_per_cpn drops older versions and overlay-duplicates at
+    // discovery time, so we never pay to parse-then-discard them.
+    let opts = CacheReadOpts {
+        latest_per_cpn: true,
+        ..Default::default()
+    };
+    let mut entries: Vec<(Cpv, CacheEntry)> = cache_entries_parallel(repos, &opts)
+        .await
+        .into_iter()
+        .filter_map(|(cpv, r)| r.ok().map(|e| (cpv, e)))
+        .collect();
 
-    // Group by cpn (asc), then highest version first within each group.
+    // Sort for deterministic output order (HashMap from latest_per_cpn
+    // hands back arbitrary insertion order).
     entries.sort_by(|(a, _), (b, _)| {
         a.cpn
             .category
             .cmp(&b.cpn.category)
             .then_with(|| a.cpn.package.cmp(&b.cpn.package))
-            .then_with(|| b.version.cmp(&a.version))
     });
-    entries.dedup_by(|(a, _), (b, _)| a.cpn == b.cpn);
 
     for (cpv, entry) in &entries {
         let hit = all || entry.metadata.description.contains(pat);
