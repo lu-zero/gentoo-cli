@@ -200,7 +200,7 @@ pub fn depgraph(
     if !dropped.is_empty() {
         let mut cpns: Vec<String> = dropped
             .iter()
-            .map(|(pkg, _)| format!("{}", pkg.cpn))
+            .map(|(pkg, _)| format!("{}", pkg.cpn()))
             .collect();
         cpns.sort();
         cpns.dedup();
@@ -241,7 +241,7 @@ pub fn depgraph(
 
     println!("\nInstall order:");
     for (i, (pkg, ver)) in order.iter().enumerate() {
-        println!("  {:>3}. {}-{}", i + 1, pkg.cpn, ver);
+        println!("  {:>3}. {}-{}", i + 1, pkg.cpn(), ver);
     }
 
     Ok(())
