@@ -210,7 +210,10 @@ mod tests {
         );
 
         let order = provider.install_order(&solution);
-        let names: Vec<&str> = order.iter().map(|(p, _)| p.cpn().package.as_str()).collect();
+        let names: Vec<&str> = order
+            .iter()
+            .map(|(p, _)| p.cpn().package.as_str())
+            .collect();
         let bottom_pos = names.iter().position(|&n| n == "bottom").unwrap();
         let top_pos = names.iter().position(|&n| n == "top").unwrap();
         assert!(

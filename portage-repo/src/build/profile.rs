@@ -7,9 +7,9 @@
 
 use std::collections::HashSet;
 
+use super::shell::EbuildShell;
 use crate::error::Result;
 use crate::repo::profile::{Profile, ProfileStack};
-use super::shell::EbuildShell;
 
 impl Profile {
     /// Source this profile's `make.defaults` into the shell, if present.
@@ -131,10 +131,10 @@ fn collect_use_flags(shell: &EbuildShell) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::repo::profile::ProfileStack;
+    use crate::repo::repository::Repository;
     use std::collections::HashSet;
     use tempfile::TempDir;
-    use crate::repo::repository::Repository;
-    use crate::repo::profile::ProfileStack;
 
     fn make_profile(dir: &TempDir, name: &str, parents: &[&str]) -> std::path::PathBuf {
         let path = dir.path().join(name);
@@ -190,7 +190,10 @@ mod tests {
         let flags: HashSet<&str> = use_val.split_whitespace().collect();
         assert!(flags.contains("foo"));
         assert!(!flags.contains("bar"), "bar should be masked");
-        assert!(flags.contains("forced"), "forced should be added by use.force");
+        assert!(
+            flags.contains("forced"),
+            "forced should be added by use.force"
+        );
     }
 
     #[tokio::test]
@@ -201,7 +204,8 @@ mod tests {
         std::fs::write(
             profile.join("make.defaults"),
             "USE_EXPAND=\"CPU_FLAGS_X86\"\nCPU_FLAGS_X86=\"sse2 mmx\"\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let stack = ProfileStack::build(profile).unwrap();
         let mut shell = repo.shell().await.unwrap();
@@ -221,7 +225,8 @@ mod tests {
         std::fs::write(
             profile.join("make.defaults"),
             "USE_EXPAND_UNPREFIXED=\"ARCH\"\nARCH=\"amd64\"\n",
-        ).unwrap();
+        )
+        .unwrap();
 
         let stack = ProfileStack::build(profile).unwrap();
         let mut shell = repo.shell().await.unwrap();
@@ -246,13 +251,18 @@ mod tests {
 
         let stack = ProfileStack::build(profile).unwrap();
         let mut shell = repo.shell().await.unwrap();
-        configure_shell(&mut shell, &stack, &[make_conf.as_path()]).await.unwrap();
+        configure_shell(&mut shell, &stack, &[make_conf.as_path()])
+            .await
+            .unwrap();
 
         let use_val = shell.get_var("USE").unwrap_or_default();
         let flags: HashSet<&str> = use_val.split_whitespace().collect();
         assert!(flags.contains("foo"));
         assert!(flags.contains("user_flag"), "user_flag from make.conf");
         assert!(!flags.contains("bar"), "bar masked by use.mask");
-        assert!(flags.contains("forced"), "use.force overrides make.conf removal");
+        assert!(
+            flags.contains("forced"),
+            "use.force overrides make.conf removal"
+        );
     }
 }

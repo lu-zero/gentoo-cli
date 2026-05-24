@@ -15,7 +15,7 @@ lasso = ["portage-atom/lasso"]
 symbol-table = ["portage-atom/symbol-table"]
 
 [dependencies]
-portage-atom = "0.9"
-pubgrub = "0.4"
+portage-atom = { workspace = true }
+pubgrub = { workspace = true }
 version-ranges = "0.1"
-thiserror = "2"
+thiserror = { workspace = true }

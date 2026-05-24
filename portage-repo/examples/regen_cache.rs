@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::process;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use clap::Parser;
 use portage_metadata::CacheEntry;
@@ -199,119 +199,122 @@ async fn main() {
     let diffs: Arc<Mutex<Vec<FieldDiff>>> = Arc::new(Mutex::new(Vec::new()));
 
     let ctx = SourceContext::new();
-    let opts = SourceOpts { jobs: Some(jobs), dedup: false };
+    let opts = SourceOpts {
+        jobs: Some(jobs),
+        dedup: false,
+    };
 
-    source_parallel(
-        &repo,
-        &masters,
-        ebuilds,
-        &opts,
-        &ctx,
-        {
-            let repo = Arc::clone(&repo);
-            let progress = Arc::clone(&progress);
-            let errors = Arc::clone(&errors);
-            let mismatches = Arc::clone(&mismatches);
-            let missing_cache = Arc::clone(&missing_cache);
-            let success = Arc::clone(&success);
-            let diffs = Arc::clone(&diffs);
-            let quiet = args.quiet;
+    source_parallel(&repo, &masters, ebuilds, &opts, &ctx, {
+        let repo = Arc::clone(&repo);
+        let progress = Arc::clone(&progress);
+        let errors = Arc::clone(&errors);
+        let mismatches = Arc::clone(&mismatches);
+        let missing_cache = Arc::clone(&missing_cache);
+        let success = Arc::clone(&success);
+        let diffs = Arc::clone(&diffs);
+        let quiet = args.quiet;
 
-            move |ebuild, result| {
-                let i = progress.fetch_add(1, Ordering::Relaxed) + 1;
-                let cpv = ebuild.cpv();
-                let cpv_str = cpv.to_string();
-                if !quiet {
-                    eprint!("\r[{i}/{total}] {cpv_str:<60}");
-                }
-
-                let metadata = match result {
-                    Err(e) => {
-                        eprintln!("\nERROR sourcing {cpv_str}: {e}");
-                        errors.fetch_add(1, Ordering::Relaxed);
-                        return;
-                    }
-                    Ok(s) => s,
-                };
-
-                let reference = match repo.cache_entry(cpv) {
-                    Ok(Some(c)) => c,
-                    Ok(None) => {
-                        eprintln!("\nMISSING cache for {cpv_str}");
-                        missing_cache.fetch_add(1, Ordering::Relaxed);
-                        success.fetch_add(1, Ordering::Relaxed);
-                        return;
-                    }
-                    Err(e) => {
-                        eprintln!("\nERROR reading cache for {cpv_str}: {e}");
-                        errors.fetch_add(1, Ordering::Relaxed);
-                        return;
-                    }
-                };
-
-                let ebuild_md5 = fs::read(ebuild.path())
-                    .map(|b| format!("{:x}", md5::compute(&b)))
-                    .ok();
-
-                let portage_repo::source::SourcedEbuild { metadata, eclasses: eclass_paths } = metadata;
-                let eclasses: Vec<(String, String)> = eclass_paths
-                    .into_iter()
-                    .filter_map(|(name, path)| {
-                        fs::read(path.as_std_path())
-                            .ok()
-                            .map(|data| (name, format!("{:x}", md5::compute(&data))))
-                    })
-                    .collect();
-
-                let sourced_entry = CacheEntry { metadata, md5: ebuild_md5, eclasses };
-
-                let ref_serialized = reference.serialize();
-                let src_serialized = sourced_entry.serialize();
-
-                let ref_map = parse_cache_map(&ref_serialized);
-                let src_map = parse_cache_map(&src_serialized);
-
-                let mut has_diff = false;
-                let mut new_diffs = Vec::new();
-                for &key in COMPARE_KEYS {
-                    let ref_val = ref_map.get(key).copied().unwrap_or("");
-                    let src_val = src_map.get(key).copied().unwrap_or("");
-
-                    if UNORDERED_KEYS.contains(&key) && !src_val.is_empty() {
-                        let dups = find_extra_duplicates(ref_val, src_val);
-                        if !dups.is_empty() {
-                            eprintln!(
-                                "\nWARN {cpv_str} {key}: extra duplicate tokens: {}",
-                                dups.join(", ")
-                            );
-                        }
-                    }
-
-                    let differs = if UNORDERED_KEYS.contains(&key) {
-                        token_multiset(ref_val) != token_multiset(src_val)
-                    } else {
-                        ref_val != src_val
-                    };
-
-                    if differs {
-                        has_diff = true;
-                        new_diffs.push(FieldDiff {
-                            cpv: cpv_str.clone(),
-                            key: key.to_string(),
-                            expected: ref_val.to_string(),
-                            got: src_val.to_string(),
-                        });
-                    }
-                }
-
-                if has_diff {
-                    mismatches.fetch_add(1, Ordering::Relaxed);
-                    diffs.lock().unwrap().extend(new_diffs);
-                }
-                success.fetch_add(1, Ordering::Relaxed);
+        move |ebuild, result| {
+            let i = progress.fetch_add(1, Ordering::Relaxed) + 1;
+            let cpv = ebuild.cpv();
+            let cpv_str = cpv.to_string();
+            if !quiet {
+                eprint!("\r[{i}/{total}] {cpv_str:<60}");
             }
-        },
-    )
+
+            let metadata = match result {
+                Err(e) => {
+                    eprintln!("\nERROR sourcing {cpv_str}: {e}");
+                    errors.fetch_add(1, Ordering::Relaxed);
+                    return;
+                }
+                Ok(s) => s,
+            };
+
+            let reference = match repo.cache_entry(cpv) {
+                Ok(Some(c)) => c,
+                Ok(None) => {
+                    eprintln!("\nMISSING cache for {cpv_str}");
+                    missing_cache.fetch_add(1, Ordering::Relaxed);
+                    success.fetch_add(1, Ordering::Relaxed);
+                    return;
+                }
+                Err(e) => {
+                    eprintln!("\nERROR reading cache for {cpv_str}: {e}");
+                    errors.fetch_add(1, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            let ebuild_md5 = fs::read(ebuild.path())
+                .map(|b| format!("{:x}", md5::compute(&b)))
+                .ok();
+
+            let portage_repo::source::SourcedEbuild {
+                metadata,
+                eclasses: eclass_paths,
+            } = metadata;
+            let eclasses: Vec<(String, String)> = eclass_paths
+                .into_iter()
+                .filter_map(|(name, path)| {
+                    fs::read(path.as_std_path())
+                        .ok()
+                        .map(|data| (name, format!("{:x}", md5::compute(&data))))
+                })
+                .collect();
+
+            let sourced_entry = CacheEntry {
+                metadata,
+                md5: ebuild_md5,
+                eclasses,
+            };
+
+            let ref_serialized = reference.serialize();
+            let src_serialized = sourced_entry.serialize();
+
+            let ref_map = parse_cache_map(&ref_serialized);
+            let src_map = parse_cache_map(&src_serialized);
+
+            let mut has_diff = false;
+            let mut new_diffs = Vec::new();
+            for &key in COMPARE_KEYS {
+                let ref_val = ref_map.get(key).copied().unwrap_or("");
+                let src_val = src_map.get(key).copied().unwrap_or("");
+
+                if UNORDERED_KEYS.contains(&key) && !src_val.is_empty() {
+                    let dups = find_extra_duplicates(ref_val, src_val);
+                    if !dups.is_empty() {
+                        eprintln!(
+                            "\nWARN {cpv_str} {key}: extra duplicate tokens: {}",
+                            dups.join(", ")
+                        );
+                    }
+                }
+
+                let differs = if UNORDERED_KEYS.contains(&key) {
+                    token_multiset(ref_val) != token_multiset(src_val)
+                } else {
+                    ref_val != src_val
+                };
+
+                if differs {
+                    has_diff = true;
+                    new_diffs.push(FieldDiff {
+                        cpv: cpv_str.clone(),
+                        key: key.to_string(),
+                        expected: ref_val.to_string(),
+                        got: src_val.to_string(),
+                    });
+                }
+            }
+
+            if has_diff {
+                mismatches.fetch_add(1, Ordering::Relaxed);
+                diffs.lock().unwrap().extend(new_diffs);
+            }
+            success.fetch_add(1, Ordering::Relaxed);
+        }
+    })
     .await
     .unwrap_or_else(|e| {
         eprintln!("\nFatal error: {e}");

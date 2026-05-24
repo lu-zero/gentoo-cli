@@ -165,7 +165,11 @@ fn dedup_dep_recursive(entries: Vec<DepEntry>) -> Vec<DepEntry> {
         .into_iter()
         .filter(|e| seen.insert(e.clone()))
         .map(|e| match e {
-            DepEntry::UseConditional { flag, negate, children } => DepEntry::UseConditional {
+            DepEntry::UseConditional {
+                flag,
+                negate,
+                children,
+            } => DepEntry::UseConditional {
                 flag,
                 negate,
                 children: dedup_dep_recursive(children),

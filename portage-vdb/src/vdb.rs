@@ -4,9 +4,9 @@ use std::path::{Path, PathBuf};
 
 use portage_atom::Cpv;
 
+use crate::Result;
 use crate::error::Error;
 use crate::package::InstalledPackage;
-use crate::Result;
 
 /// The default VDB path.
 pub const DEFAULT_VDB_PATH: &str = "/var/db/pkg";
@@ -60,12 +60,10 @@ impl Vdb {
     /// Malformed entries (bad directory names, missing metadata) are skipped.
     pub fn packages(&self) -> impl Iterator<Item = InstalledPackage> + '_ {
         let cat_dirs: Vec<PathBuf> = self.category_dirs();
-        cat_dirs
-            .into_iter()
-            .flat_map(|cat_dir| {
-                let pkgs: Vec<_> = self.packages_in_category_dir(&cat_dir).collect();
-                pkgs
-            })
+        cat_dirs.into_iter().flat_map(|cat_dir| {
+            let pkgs: Vec<_> = self.packages_in_category_dir(&cat_dir).collect();
+            pkgs
+        })
     }
 
     /// List category directory names (e.g. `app-shells`, `sys-libs`).
@@ -118,8 +116,7 @@ impl Vdb {
     /// Scans all packages' CONTENTS files. This is O(n) over installed packages.
     pub fn owner(&self, file_path: &Path) -> Option<InstalledPackage> {
         self.packages()
-            .filter(|pkg| pkg.owns(file_path).unwrap_or(false))
-            .next()
+            .find(|pkg| pkg.owns(file_path).unwrap_or(false))
     }
 
     /// Total number of installed packages.

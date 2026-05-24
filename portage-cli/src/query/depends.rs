@@ -10,8 +10,7 @@ pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
     let repo = Repository::open(repo_path).map_err(|e| Error::Other(e.to_string()))?;
 
     for raw in atoms {
-        let target =
-            Dep::parse(raw).map_err(|e| Error::Other(format!("bad atom '{raw}': {e}")))?;
+        let target = Dep::parse(raw).map_err(|e| Error::Other(format!("bad atom '{raw}': {e}")))?;
 
         let mut matches: BTreeSet<String> = BTreeSet::new();
 

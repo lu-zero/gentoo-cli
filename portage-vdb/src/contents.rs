@@ -107,10 +107,7 @@ impl ContentsEntry {
 
     /// Parse a full CONTENTS file into entries.
     pub fn parse(contents: &str) -> Vec<Self> {
-        contents
-            .lines()
-            .filter_map(Self::parse_line)
-            .collect()
+        contents.lines().filter_map(Self::parse_line).collect()
     }
 }
 
@@ -126,7 +123,10 @@ mod tests {
         .unwrap();
         assert_eq!(entry.kind, ContentsKind::Obj);
         assert_eq!(entry.path, PathBuf::from("/etc/skel/.bashrc"));
-        assert_eq!(entry.md5.as_deref(), Some("d210b9cd7fc07420736480f2062d7d7f"));
+        assert_eq!(
+            entry.md5.as_deref(),
+            Some("d210b9cd7fc07420736480f2062d7d7f")
+        );
         assert_eq!(entry.mtime, Some(1778566175));
         assert!(entry.target.is_none());
     }
@@ -140,8 +140,7 @@ mod tests {
 
     #[test]
     fn parse_sym() {
-        let entry =
-            ContentsEntry::parse_line("sym /bin/rbash -> bash 1778566174").unwrap();
+        let entry = ContentsEntry::parse_line("sym /bin/rbash -> bash 1778566174").unwrap();
         assert_eq!(entry.kind, ContentsKind::Sym);
         assert_eq!(entry.path, PathBuf::from("/bin/rbash"));
         assert_eq!(entry.target.as_deref(), Some(std::path::Path::new("bash")));
@@ -150,12 +149,13 @@ mod tests {
 
     #[test]
     fn parse_sym_absolute_target() {
-        let entry = ContentsEntry::parse_line(
-            "sym /usr/lib/libfoo.so -> libfoo.so.1 1234567890",
-        )
-        .unwrap();
+        let entry =
+            ContentsEntry::parse_line("sym /usr/lib/libfoo.so -> libfoo.so.1 1234567890").unwrap();
         assert_eq!(entry.kind, ContentsKind::Sym);
-        assert_eq!(entry.target.as_deref(), Some(std::path::Path::new("libfoo.so.1")));
+        assert_eq!(
+            entry.target.as_deref(),
+            Some(std::path::Path::new("libfoo.so.1"))
+        );
     }
 
     #[test]

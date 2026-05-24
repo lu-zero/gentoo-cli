@@ -1097,7 +1097,9 @@ mod tests {
                 Interned::intern("0"),
             ))
             .is_some();
-        let a_in_sol = solution.iter().any(|(p, _)| p.cpn().package.as_str() == "a");
+        let a_in_sol = solution
+            .iter()
+            .any(|(p, _)| p.cpn().package.as_str() == "a");
 
         assert!(
             b_in_sol,
@@ -1132,11 +1134,13 @@ mod tests {
         assert_eq!(pkgs.len(), 2, "expected one entry per slot");
         assert!(pkgs.iter().all(|p| !p.is_virtual()), "no virtual nodes");
         assert!(
-            pkgs.iter().any(|p| p.slot() == Some(Interned::intern("3.11"))),
+            pkgs.iter()
+                .any(|p| p.slot() == Some(Interned::intern("3.11"))),
             "slot 3.11 present"
         );
         assert!(
-            pkgs.iter().any(|p| p.slot() == Some(Interned::intern("3.12"))),
+            pkgs.iter()
+                .any(|p| p.slot() == Some(Interned::intern("3.12"))),
             "slot 3.12 present"
         );
     }

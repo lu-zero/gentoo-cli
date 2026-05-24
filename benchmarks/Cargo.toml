@@ -22,24 +22,23 @@ mimalloc = ["dep:mimalloc"]
 dhat-heap = ["dep:dhat"]
 
 [dependencies]
-portage-atom = { path = "../portage-atom" }
-portage-metadata = { path = "../portage-metadata" }
-portage-repo = { path = "../portage-repo" }
-portage-atom-pubgrub = { path = "../portage-atom-pubgrub" }
-portage-atom-resolvo = { path = "../portage-atom-resolvo" }
+portage-atom = { workspace = true }
+portage-metadata = { workspace = true }
+portage-repo = { workspace = true }
+portage-atom-pubgrub = { workspace = true }
+portage-atom-resolvo = { workspace = true }
 
-pubgrub = "0.4"
-resolvo = "0.10.2"
+pubgrub = { workspace = true }
+resolvo = { workspace = true }
 pkgcraft = { path = "../../pkgcraft/crates/pkgcraft" }
-clap = { version = "4", features = ["derive"] }
-camino = "1"
-mimalloc = { version = "0.1.50", optional = true }
+clap = { workspace = true }
+camino = { workspace = true }
+mimalloc = { workspace = true, optional = true }
 dhat = { version = "0.3.3", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 tokio = { version = "1", features = ["rt"] }
-
 
 [[bench]]
 name = "dep_parsing"

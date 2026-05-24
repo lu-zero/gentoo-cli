@@ -185,16 +185,48 @@ mod pubgrub_solver {
         let adapter = Adapter::new(data);
         let mut use_config = UseConfig::new();
         for flag in &[
-            "acl", "arm64", "big-endian", "bzip2", "cpu_flags_arm_edsp",
-            "cpu_flags_arm_v8", "cpu_flags_arm_vfp", "cpu_flags_arm_vfp-d32",
-            "cpu_flags_arm_vfpv3", "cpu_flags_arm_vfpv4", "crypt", "dist",
-            "elibc_glibc", "gdbm", "iconv", "ipv6", "kernel_linux", "libtirpc",
-            "llvm_targets_AArch64", "llvm_targets_RISCV", "mimalloc", "ncurses",
-            "nls", "npm", "openmp", "pam", "pcre",
-            "python_single_target_python3_13", "python_targets_python3_13",
-            "python_targets_python3_14", "qemu", "readline", "relapack",
-            "rust-analyzer", "rust-src", "seccomp", "split-usr", "ssl",
-            "test-rust", "unicode", "xattr", "zlib",
+            "acl",
+            "arm64",
+            "big-endian",
+            "bzip2",
+            "cpu_flags_arm_edsp",
+            "cpu_flags_arm_v8",
+            "cpu_flags_arm_vfp",
+            "cpu_flags_arm_vfp-d32",
+            "cpu_flags_arm_vfpv3",
+            "cpu_flags_arm_vfpv4",
+            "crypt",
+            "dist",
+            "elibc_glibc",
+            "gdbm",
+            "iconv",
+            "ipv6",
+            "kernel_linux",
+            "libtirpc",
+            "llvm_targets_AArch64",
+            "llvm_targets_RISCV",
+            "mimalloc",
+            "ncurses",
+            "nls",
+            "npm",
+            "openmp",
+            "pam",
+            "pcre",
+            "python_single_target_python3_13",
+            "python_targets_python3_13",
+            "python_targets_python3_14",
+            "qemu",
+            "readline",
+            "relapack",
+            "rust-analyzer",
+            "rust-src",
+            "seccomp",
+            "split-usr",
+            "ssl",
+            "test-rust",
+            "unicode",
+            "xattr",
+            "zlib",
         ] {
             use_config.enable(Interned::intern(flag));
         }
@@ -405,7 +437,10 @@ mod resolvo_solver {
             let _pool = provider.pool();
             let empty_names: Vec<_> = provider.debug_empty_candidates();
             if !empty_names.is_empty() {
-                eprintln!("WARNING: {} names with no candidates after construction:", empty_names.len());
+                eprintln!(
+                    "WARNING: {} names with no candidates after construction:",
+                    empty_names.len()
+                );
                 for name in &empty_names[..empty_names.len().min(20)] {
                     eprintln!("  {}", name);
                 }
@@ -459,7 +494,10 @@ mod resolvo_solver {
                         elapsed.as_secs_f64() * 1000.0,
                         report
                     );
-                    Err(format!("Resolvo: no solution in {:.1}ms (see above)", elapsed.as_secs_f64() * 1000.0))
+                    Err(format!(
+                        "Resolvo: no solution in {:.1}ms (see above)",
+                        elapsed.as_secs_f64() * 1000.0
+                    ))
                 } else {
                     Err(format!(
                         "Resolvo: error in {:.1}ms: {:?}",

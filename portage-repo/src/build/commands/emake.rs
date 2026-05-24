@@ -38,10 +38,7 @@ impl builtins::Command for EmakeCommand {
             .split_whitespace()
             .map(|s| s.to_owned())
             .collect();
-        let extra: Vec<String> = extra_str
-            .split_whitespace()
-            .map(|s| s.to_owned())
-            .collect();
+        let extra: Vec<String> = extra_str.split_whitespace().map(|s| s.to_owned()).collect();
         let args = self.args.clone();
         let cwd = shell.working_dir().to_path_buf();
 

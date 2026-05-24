@@ -80,10 +80,23 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
             eprintln!("depclean: atoms={:?}", parsed);
             Err(error::Error::NotImplemented("depclean".into()))
         }
-        Applet::Regen { repos, output, repos_dir, jobs, dedup } => {
+        Applet::Regen {
+            repos,
+            output,
+            repos_dir,
+            jobs,
+            dedup,
+        } => {
             let resolved = globals.repo_path();
             let repo_path = repos.first().map(|r| r.as_str()).unwrap_or(&resolved);
-            regen::run(repo_path, repos_dir.as_deref(), output.clone(), *jobs, *dedup).await
+            regen::run(
+                repo_path,
+                repos_dir.as_deref(),
+                output.clone(),
+                *jobs,
+                *dedup,
+            )
+            .await
         }
         Applet::Quickpkg { atoms } => {
             let parsed = parse_atoms(atoms);
@@ -198,14 +211,14 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             let parsed = parse_atoms(atom);
             let atoms: Vec<String> = parsed.iter().map(|d| d.to_string()).collect();
             if atoms.is_empty() {
-                return Err(error::Error::NotImplemented("equery depgraph: no valid atoms".into()));
+                return Err(error::Error::NotImplemented(
+                    "equery depgraph: no valid atoms".into(),
+                ));
             }
             let resolved = globals.repo_path();
             let repo_path = std::path::PathBuf::from(&resolved);
             if !repo_path.is_dir() {
-                return Err(error::Error::Other(
-                    format!("repo not found at {resolved}"),
-                ));
+                return Err(error::Error::Other(format!("repo not found at {resolved}")));
             }
             depgraph::depgraph(&repo_path, &atoms, &globals.arch, None)
         }
@@ -298,10 +311,16 @@ fn run_log(command: &Option<LogCommand>) -> Result<()> {
 
 fn open_vdb(globals: &cli::Cli) -> Result<portage_vdb::Vdb> {
     let vdb_path = globals
-        .root
+        .vdb
         .as_deref()
-        .map(|r| format!("{}/var/db/pkg", r.trim_end_matches('/')))
-        .unwrap_or_else(|| "/var/db/pkg".to_string());
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            globals
+                .root
+                .as_deref()
+                .map(|r| format!("{}/var/db/pkg", r.trim_end_matches('/')))
+                .unwrap_or_else(|| "/var/db/pkg".to_string())
+        });
     portage_vdb::Vdb::open(std::path::Path::new(&vdb_path))
         .map_err(|e| error::Error::Other(format!("failed to open VDB at {}: {}", vdb_path, e)))
 }

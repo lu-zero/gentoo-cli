@@ -11,9 +11,9 @@ keywords = ["gentoo", "portage", "ebuild", "pms", "metadata"]
 categories = ["parser-implementations", "development-tools"]
 
 [dependencies]
-portage-atom = "0.9"
-winnow = { version = "1.0", features = ["ascii"] }
-thiserror = "2"
+portage-atom = { workspace = true }
+winnow = { workspace = true }
+thiserror = { workspace = true }
 
 [features]
 default = []
@@ -23,4 +23,3 @@ symbol-table = ["portage-atom/symbol-table"]
 [[example]]
 name = "parse_cache"
 path = "examples/parse_cache.rs"
-

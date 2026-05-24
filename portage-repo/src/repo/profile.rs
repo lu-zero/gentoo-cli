@@ -6,8 +6,8 @@ use gentoo_core::Arch;
 use portage_atom::Dep;
 use portage_metadata::Eapi;
 
-use crate::error::{Error, Result};
 use super::util;
+use crate::error::{Error, Result};
 
 /// Stability status of a profile.
 ///
@@ -227,7 +227,6 @@ impl Profile {
     pub fn package_use_stable_mask(&self) -> Result<Vec<(Dep, Vec<String>)>> {
         parse_atom_flags_list(&self.path.join("package.use.stable.mask"))
     }
-
 }
 
 // ---------------------------------------------------------------------------
@@ -370,7 +369,6 @@ impl ProfileStack {
     pub fn package_use_stable_mask(&self) -> Result<Vec<(Dep, Vec<String>)>> {
         collect_atom_flags(self.profiles.iter().map(|p| p.package_use_stable_mask()))
     }
-
 }
 
 /// Recursively collect profiles depth-first, ancestors before self.

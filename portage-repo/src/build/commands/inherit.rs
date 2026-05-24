@@ -264,7 +264,10 @@ impl builtins::Command for InheritCommand {
 
 /// Return (hits, misses) since process start.
 pub fn cache_stats() -> (u64, u64) {
-    (CACHE_HITS.load(Ordering::Relaxed), CACHE_MISSES.load(Ordering::Relaxed))
+    (
+        CACHE_HITS.load(Ordering::Relaxed),
+        CACHE_MISSES.load(Ordering::Relaxed),
+    )
 }
 
 /// Parse an eclass file into a `Program`.
@@ -273,8 +276,8 @@ pub(crate) fn parse_eclass_file(
     options: &brush_parser::ParserOptions,
 ) -> Program {
     let mut buf = String::new();
-    let mut file = std::fs::File::open(path)
-        .unwrap_or_else(|e| panic!("cannot open {}: {e}", path));
+    let mut file =
+        std::fs::File::open(path).unwrap_or_else(|e| panic!("cannot open {}: {e}", path));
     file.read_to_string(&mut buf)
         .unwrap_or_else(|e| panic!("cannot read {}: {e}", path));
     let mut parser = brush_parser::Parser::new(buf.as_bytes(), options);

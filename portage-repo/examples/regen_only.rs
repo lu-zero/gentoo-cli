@@ -84,7 +84,10 @@ async fn main() {
 
     let ebuilds: Vec<_> = if let Some(ref f) = args.filter {
         let f = f.clone();
-        ebuilds.into_iter().filter(move |eb| matches_filter(eb, &f)).collect()
+        ebuilds
+            .into_iter()
+            .filter(move |eb| matches_filter(eb, &f))
+            .collect()
     } else {
         ebuilds.into_iter().collect()
     };
@@ -110,7 +113,10 @@ async fn main() {
     );
 
     let opts = RegenOpts {
-        source: SourceOpts { jobs: Some(jobs), dedup: args.dedup },
+        source: SourceOpts {
+            jobs: Some(jobs),
+            dedup: args.dedup,
+        },
         output_dir: args.output,
     };
 

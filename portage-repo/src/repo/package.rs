@@ -3,10 +3,10 @@ use camino::{Utf8Path, Utf8PathBuf};
 use portage_atom::{Cpn, Cpv};
 
 use super::ebuild::Ebuild;
-use crate::error::Result;
 use super::manifest::Manifest;
 use super::pkgmetadata::PkgMetadata;
 use super::util;
+use crate::error::Result;
 
 /// A package directory within a category.
 ///

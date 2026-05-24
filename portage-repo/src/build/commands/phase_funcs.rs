@@ -77,9 +77,7 @@ fn eapi_predicate(name: &str, eapi: u32) -> bool {
         "___eapi_has_usex" => eapi >= 5,
         "___eapi_has_ver_replacing" => eapi >= 9,
         "___eapi_has_version_functions" => eapi >= 7,
-        "___eapi_best_version_and_has_version_support_--host-root" => {
-            eapi == 5 || eapi == 6
-        }
+        "___eapi_best_version_and_has_version_support_--host-root" => eapi == 5 || eapi == 6,
         "___eapi_best_version_and_has_version_support_-b_-d_-r" => eapi >= 7,
         "___eapi_die_can_respect_nonfatal" => eapi >= 6,
         "___eapi_doconfd_respects_insopts" => eapi <= 7,
@@ -229,7 +227,9 @@ impl builtins::Command for EbuildPhaseFuncsCommand {
             // EAPI 0/1 has no 'default' mechanism; define missing phase funcs directly.
             for name in &["pkg_nofetch", "src_unpack", "src_test"] {
                 if *name == phase {
-                    script += &format!("declare -F {name} >/dev/null || {name}() {{ __eapi0_{name}; }}\n");
+                    script += &format!(
+                        "declare -F {name} >/dev/null || {name}() {{ __eapi0_{name}; }}\n"
+                    );
                 }
             }
             if phase == "src_compile" {

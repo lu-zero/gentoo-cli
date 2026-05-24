@@ -11,24 +11,23 @@ keywords = ["gentoo", "stages", "stage3", "cross-compilation"]
 categories = ["development-tools"]
 
 [dependencies]
-gentoo-core = "0.5.0"
-thiserror = "2.0"
+gentoo-core = { workspace = true }
+thiserror = { workspace = true }
 tracing = "0.1"
-serde = { version = "1.0", features = ["derive"], optional = true }
-tempfile = "3"
+serde = { workspace = true, optional = true }
+tempfile = { workspace = true }
 reqwest = { version = "0.13", features = ["rustls", "stream"] }
-bon = "3"
+bon = { workspace = true }
 tokio = { version = "1.0", features = ["fs", "io-util"] }
 futures = "0.3"
 
 [dev-dependencies]
 serde_json = "1.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tokio = { version = "1.0", features = ["full"] }  # For examples and tests
+tokio = { version = "1.0", features = ["full"] }
 
 [features]
 default = []
 lasso = ["gentoo-core/lasso"]
 symbol-table = ["gentoo-core/symbol-table"]
 serde = ["dep:serde", "gentoo-core/serde"]
-

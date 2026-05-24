@@ -96,10 +96,7 @@ fn find_packages(vdb: &Vdb, pattern: &str) -> Vec<portage_vdb::InstalledPackage>
     } else {
         // No category — search all packages by name
         vdb.packages()
-            .filter(|pkg| {
-                pkg.cpn().package.as_ref() == pattern
-                    || pkg.pf() == pattern
-            })
+            .filter(|pkg| pkg.cpn().package.as_ref() == pattern || pkg.pf() == pattern)
             .collect()
     }
 }

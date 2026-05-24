@@ -15,8 +15,8 @@ pub async fn run(
         Repository::open_with_masters(repo_path, dir)
             .map_err(|e| Error::Other(format!("open repo: {e}")))?
     } else {
-        let repo = Repository::open(repo_path)
-            .map_err(|e| Error::Other(format!("open repo: {e}")))?;
+        let repo =
+            Repository::open(repo_path).map_err(|e| Error::Other(format!("open repo: {e}")))?;
         (repo, vec![])
     };
 
@@ -26,11 +26,7 @@ pub async fn run(
         .into_iter()
         .collect();
 
-    let out = output.unwrap_or_else(|| {
-        repo.path()
-            .join("metadata/md5-cache")
-            .into_std_path_buf()
-    });
+    let out = output.unwrap_or_else(|| repo.path().join("metadata/md5-cache").into_std_path_buf());
 
     let opts = RegenOpts {
         source: SourceOpts { jobs, dedup },

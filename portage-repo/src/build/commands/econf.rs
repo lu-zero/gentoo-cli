@@ -22,23 +22,39 @@ impl builtins::Command for EconfCommand {
     ) -> Result<brush_core::ExecutionResult, Self::Error> {
         let shell = context.shell;
 
-        let get = |var: &str| shell.env_str(var).map(|s| s.into_owned()).unwrap_or_default();
+        let get = |var: &str| {
+            shell
+                .env_str(var)
+                .map(|s| s.into_owned())
+                .unwrap_or_default()
+        };
         let eapi: u32 = get("EAPI").parse().unwrap_or(0);
         let econf_source = {
             let s = get("ECONF_SOURCE");
             if s.is_empty() { ".".to_string() } else { s }
         };
-        let eprefix    = get("EPREFIX");
-        let pf         = get("PF");
-        let chost      = get("CHOST");
-        let cbuild     = get("CBUILD");
-        let ctarget    = get("CTARGET");
-        let esysroot   = { let s = get("ESYSROOT"); if s.is_empty() { "/".to_string() } else { s } };
+        let eprefix = get("EPREFIX");
+        let pf = get("PF");
+        let chost = get("CHOST");
+        let cbuild = get("CBUILD");
+        let ctarget = get("CTARGET");
+        let esysroot = {
+            let s = get("ESYSROOT");
+            if s.is_empty() { "/".to_string() } else { s }
+        };
         let extra_econf = get("EXTRA_ECONF");
 
         let mut env_vars: Vec<(String, String)> = Vec::new();
         for var in &[
-            "CC", "CXX", "AR", "RANLIB", "NM", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS",
+            "CC",
+            "CXX",
+            "AR",
+            "RANLIB",
+            "NM",
+            "CFLAGS",
+            "CXXFLAGS",
+            "CPPFLAGS",
+            "LDFLAGS",
             "CONFIG_SHELL",
         ] {
             if let Some(val) = shell.env_str(var) {
@@ -76,9 +92,15 @@ impl builtins::Command for EconfCommand {
             let mut conf_args: Vec<String> = Vec::new();
 
             conf_args.push(format!("--prefix={eprefix}/usr"));
-            if !cbuild.is_empty() { conf_args.push(format!("--build={cbuild}")); }
-            if !chost.is_empty()  { conf_args.push(format!("--host={chost}")); }
-            if !ctarget.is_empty() { conf_args.push(format!("--target={ctarget}")); }
+            if !cbuild.is_empty() {
+                conf_args.push(format!("--build={cbuild}"));
+            }
+            if !chost.is_empty() {
+                conf_args.push(format!("--host={chost}"));
+            }
+            if !ctarget.is_empty() {
+                conf_args.push(format!("--target={ctarget}"));
+            }
             conf_args.push(format!("--mandir={eprefix}/usr/share/man"));
             conf_args.push(format!("--infodir={eprefix}/usr/share/info"));
             conf_args.push(format!("--datadir={eprefix}/usr/share"));

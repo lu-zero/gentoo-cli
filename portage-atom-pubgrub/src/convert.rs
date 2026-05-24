@@ -184,9 +184,11 @@ impl ConvertCtx<'_> {
                     }
                     UseFlagState::SolverDecided => {
                         let flag_name = flag.as_str();
-                        let virtual_pkg = PortagePackage::use_decision(Interned::intern(
-                            &format!("USE_{}_{}", self.cpn_str.replace('/', "_"), flag_name),
-                        ));
+                        let virtual_pkg = PortagePackage::use_decision(Interned::intern(&format!(
+                            "USE_{}_{}",
+                            self.cpn_str.replace('/', "_"),
+                            flag_name
+                        )));
 
                         let on_deps = if *negate {
                             vec![]

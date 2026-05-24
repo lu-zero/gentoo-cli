@@ -11,13 +11,13 @@ keywords = ["gentoo", "interner", "string"]
 categories = ["data-structures", "memory-management"]
 
 [dependencies]
-papaya = { version = "0.2", optional = true }
+papaya = { workspace = true, optional = true }
 boxcar = { version = "0.2", optional = true }
-parking_lot = { version = "0.12", optional = true }
-lasso = { version = "0.7", features = ["multi-threaded"], optional = true }
-symbol_table = { version = "0.5", features = ["global"], optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-cfg-if = "1.0.4"
+parking_lot = { workspace = true, optional = true }
+lasso = { workspace = true, optional = true }
+symbol_table = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+cfg-if = { workspace = true }
 
 [features]
 default = ["interner"]
@@ -28,9 +28,8 @@ interner = ["dep:papaya", "dep:boxcar", "dep:parking_lot"]
 lasso = ["dep:lasso"]
 symbol-table = ["dep:symbol_table"]
 
-
 [dev-dependencies]
-criterion = "0.5"
+criterion = { workspace = true }
 
 [[bench]]
 name = "interner"

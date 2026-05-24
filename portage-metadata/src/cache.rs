@@ -820,11 +820,7 @@ _eclasses_=foo\taabb\tbar\tccdd\tbaz\teeff
         let pairs: Vec<(&str, &str)> = raw.lines().collect();
         assert_eq!(
             pairs,
-            vec![
-                ("EAPI", "8"),
-                ("DESCRIPTION", "hello"),
-                ("SLOT", "0"),
-            ]
+            vec![("EAPI", "8"), ("DESCRIPTION", "hello"), ("SLOT", "0"),]
         );
     }
 
@@ -848,7 +844,10 @@ _eclasses_=foo\taabb\tbar\tccdd\tbaz\teeff
         // RawCacheEntry::lines, so the two layers must agree.
         let raw = RawCacheEntry::new(EXAMPLE_CACHE);
         let entry = CacheEntry::from_kv_pairs(raw.lines()).unwrap();
-        assert_eq!(entry.metadata.description, raw.field("DESCRIPTION").unwrap());
+        assert_eq!(
+            entry.metadata.description,
+            raw.field("DESCRIPTION").unwrap()
+        );
         assert_eq!(entry.md5.as_deref(), raw.field("_md5_"));
     }
 }

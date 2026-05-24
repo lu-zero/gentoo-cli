@@ -17,16 +17,16 @@ lasso = ["portage-atom/lasso", "portage-metadata/lasso"]
 symbol-table = ["portage-atom/symbol-table", "portage-metadata/symbol-table"]
 
 [dependencies]
-portage-atom = "0.9"
-portage-metadata = "0.7"
-gentoo-core = "0.5"
+portage-atom = { workspace = true }
+portage-metadata = { workspace = true }
+gentoo-core = { workspace = true }
 brush-core = { git = "https://github.com/lu-zero/brush.git", branch = "for-portage-repo", features = ["experimental-parser"] }
 brush-builtins = { git = "https://github.com/lu-zero/brush.git", branch = "for-portage-repo" }
 brush-parser = { git = "https://github.com/lu-zero/brush.git", branch = "for-portage-repo" }
-clap = { version = "4", features = ["derive"] }
+clap = { workspace = true }
 tokio = { version = "1", features = ["rt"] }
 regex = "1"
-thiserror = "2"
+thiserror = { workspace = true }
 jwalk = "0.8.1"
 flume = "0.12.0"
 blake2 = "0.11.0-rc.5"
@@ -36,13 +36,11 @@ roxmltree = "0.21.1"
 itertools = "0.14.0"
 dhat = { version = "0.3.3", optional = true }
 mimalloc = { version = "0.1.50", optional = true }
-camino = "1.2.2"
-papaya = "0.2"
-
+camino = { workspace = true }
+papaya = { workspace = true }
 md5 = "0.7"
 
 [dev-dependencies]
 libc = "0.2"
-tempfile = "3"
+tempfile = { workspace = true }
 tokio = { version = "1", features = ["macros"] }
-

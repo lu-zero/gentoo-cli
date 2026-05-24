@@ -33,33 +33,33 @@
 //! > thoroughly audited. It may contain bugs, incomplete PMS coverage, or
 //! > surprising edge-case behaviour. Use at your own risk.
 
+pub(crate) mod build;
+pub mod cache;
 mod error;
 pub(crate) mod repo;
-pub(crate) mod build;
 pub mod source;
-pub mod cache;
 
 pub use build::inherit;
 
 pub use error::{Error, Result};
 
 // Re-export the most-used types at crate root for backwards compat
-pub use repo::Category;
-pub use repo::Ebuild;
-pub use gentoo_core::arch::ExoticKey;
-pub use gentoo_core::{Arch, KnownArch, arch};
-pub use repo::LayoutConf;
-pub use repo::{Manifest, ManifestEntry};
-pub use repo::Package;
-pub use repo::PkgMetadata;
-pub use portage_metadata::interner::{DefaultInterner, GlobalInterner, Interner, NoInterner};
-pub use repo::{Profile, ProfileDesc, ProfileStack, ProfileStatus};
-pub use repo::{RepoEntry, ReposConf};
-pub use repo::{CacheEntries, CacheEntriesIter, Ebuilds, EbuildsIter, ProfileUpdate, Repository};
 pub use build::EbuildShell;
-pub use repo::UseExpand;
-pub use source::{SourceContext, SourceOpts, source_parallel, source_single};
 pub use cache::{
     CacheReadOpts, RegenOpts, RegenStats, cache_cpvs, cache_entries_parallel, regen_cache,
 };
+pub use gentoo_core::arch::ExoticKey;
+pub use gentoo_core::{Arch, KnownArch, arch};
 pub use portage_metadata::EbuildMetadata;
+pub use portage_metadata::interner::{DefaultInterner, GlobalInterner, Interner, NoInterner};
+pub use repo::Category;
+pub use repo::Ebuild;
+pub use repo::LayoutConf;
+pub use repo::Package;
+pub use repo::PkgMetadata;
+pub use repo::UseExpand;
+pub use repo::{CacheEntries, CacheEntriesIter, Ebuilds, EbuildsIter, ProfileUpdate, Repository};
+pub use repo::{Manifest, ManifestEntry};
+pub use repo::{Profile, ProfileDesc, ProfileStack, ProfileStatus};
+pub use repo::{RepoEntry, ReposConf};
+pub use source::{SourceContext, SourceOpts, source_parallel, source_single};

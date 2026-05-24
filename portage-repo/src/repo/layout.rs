@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use crate::error::{Error, Result};
 use super::util;
+use crate::error::{Error, Result};
 
 /// Parsed representation of `metadata/layout.conf`.
 ///

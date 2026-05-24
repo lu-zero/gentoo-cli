@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use portage_atom::DepEntry;
 use portage_metadata::{LicenseExpr, RequiredUseExpr};
 
@@ -169,9 +169,7 @@ fn bench_license_dedup(c: &mut Criterion) {
             black_box(l.dedup())
         })
     });
-    g.bench_function("ffmpeg: dedup only", |b| {
-        b.iter(|| black_box(lic.dedup()))
-    });
+    g.bench_function("ffmpeg: dedup only", |b| b.iter(|| black_box(lic.dedup())));
 
     g.bench_function("ffmpeg(2x): parse", |b| {
         b.iter(|| black_box(LicenseExpr::parse(black_box(&doubled_lic)).unwrap()))
@@ -191,8 +189,7 @@ fn bench_license_dedup(c: &mut Criterion) {
 
 // ── Required-use benchmarks ────────────────────────────────────────────────
 
-const FFMPEG_REQUIRED_USE: &str =
-    "amr? ( gpl ) amrenc? ( gpl ) codec2? ( gpl ) fdk? ( !gpl ) gme? ( gpl ) \
+const FFMPEG_REQUIRED_USE: &str = "amr? ( gpl ) amrenc? ( gpl ) codec2? ( gpl ) fdk? ( !gpl ) gme? ( gpl ) \
      openssl? ( !gpl ) rav1e? ( !gpl ) samba? ( gpl ) vidstab? ( gpl ) \
      x264? ( gpl ) x265? ( gpl ) xvid? ( gpl ) \
      cpu_flags_x86_mmx? ( cpu_flags_x86_mmxext )";
@@ -214,9 +211,7 @@ fn bench_required_use_dedup(c: &mut Criterion) {
             black_box(r.dedup())
         })
     });
-    g.bench_function("ffmpeg: dedup only", |b| {
-        b.iter(|| black_box(ru.dedup()))
-    });
+    g.bench_function("ffmpeg: dedup only", |b| b.iter(|| black_box(ru.dedup())));
 
     g.bench_function("ffmpeg(2x): parse", |b| {
         b.iter(|| black_box(RequiredUseExpr::parse(black_box(&doubled_ru)).unwrap()))

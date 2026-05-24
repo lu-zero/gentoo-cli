@@ -18,7 +18,12 @@ pub fn run(repo_path: &Path, flags: &[String]) -> Result<()> {
                 continue;
             }
             if let Ok(Some(entry)) = repo.cache_entry(cpv) {
-                if entry.metadata.iuse.iter().any(|u| u.name() == flag.as_str()) {
+                if entry
+                    .metadata
+                    .iuse
+                    .iter()
+                    .any(|u| u.name() == flag.as_str())
+                {
                     seen.insert(cpn);
                 }
             }

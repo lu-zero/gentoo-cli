@@ -11,9 +11,9 @@ keywords = ["gentoo", "core", "arch", "target"]
 categories = ["development-tools", "os::unix-apis"]
 
 [dependencies]
-gentoo-interner = "0.3"
-thiserror = "1.0"
-serde = { version = "1.0", features = ["derive"], optional = true }
+gentoo-interner = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = "1.0"
@@ -24,4 +24,3 @@ interner = ["gentoo-interner/interner"]
 lasso = ["gentoo-interner/lasso"]
 symbol-table = ["gentoo-interner/symbol-table"]
 serde = ["dep:serde", "gentoo-interner/serde"]
-

@@ -1,8 +1,8 @@
 use camino::{Utf8Path, Utf8PathBuf};
 
-use crate::error::Result;
 use super::package::Package;
 use super::util;
+use crate::error::Result;
 
 /// A category directory within an ebuild repository.
 ///

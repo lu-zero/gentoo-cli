@@ -124,14 +124,21 @@ impl Ord for PortagePackage {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         use std::cmp::Ordering;
         match (self, other) {
-            (Self::Real { cpn: a_cpn, slot: a_slot }, Self::Real { cpn: b_cpn, slot: b_slot }) => {
-                a_cpn.cmp(b_cpn).then_with(|| match (a_slot, b_slot) {
-                    (Some(a), Some(b)) => a.as_str().cmp(b.as_str()),
-                    (Some(_), None) => Ordering::Greater,
-                    (None, Some(_)) => Ordering::Less,
-                    (None, None) => Ordering::Equal,
-                })
-            }
+            (
+                Self::Real {
+                    cpn: a_cpn,
+                    slot: a_slot,
+                },
+                Self::Real {
+                    cpn: b_cpn,
+                    slot: b_slot,
+                },
+            ) => a_cpn.cmp(b_cpn).then_with(|| match (a_slot, b_slot) {
+                (Some(a), Some(b)) => a.as_str().cmp(b.as_str()),
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (None, None) => Ordering::Equal,
+            }),
             (Self::Real { .. }, _) => Ordering::Less,
             (_, Self::Real { .. }) => Ordering::Greater,
             _ => self.discriminant_ord().cmp(&other.discriminant_ord()),
@@ -160,7 +167,10 @@ impl PortagePackage {
 impl fmt::Display for PortagePackage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Real { cpn, slot: Some(slot) } => write!(f, "{}:{}", cpn, slot),
+            Self::Real {
+                cpn,
+                slot: Some(slot),
+            } => write!(f, "{}:{}", cpn, slot),
             Self::Real { cpn, slot: None } => write!(f, "{}", cpn),
             Self::Root => write!(f, "__internal__/root"),
             Self::UseDecision { name } => write!(f, "__internal__/{}", name),

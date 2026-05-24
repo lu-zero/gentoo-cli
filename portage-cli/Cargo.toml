@@ -31,15 +31,13 @@ symbol-table = [
 ]
 
 [dependencies]
-gentoo-core = "0.5"
-portage-atom = "0.9"
-portage-atom-pubgrub = "0.4"
-portage-metadata = "0.7"
-portage-repo = { path = "../portage-repo" }
-portage-vdb = { path = "../portage-vdb" }
-clap = { version = "4", features = ["derive"] }
-itertools = "0.14"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-thiserror = "2"
-mimalloc = { version = "0.1.50", optional = true }
-
+gentoo-core = { workspace = true }
+portage-atom = { workspace = true }
+portage-atom-pubgrub = { workspace = true }
+portage-metadata = { workspace = true }
+portage-repo = { workspace = true }
+portage-vdb = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+mimalloc = { workspace = true, optional = true }

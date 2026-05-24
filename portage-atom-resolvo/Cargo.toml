@@ -13,11 +13,11 @@ lasso = ["portage-atom/lasso"]
 symbol-table = ["portage-atom/symbol-table"]
 
 [dependencies]
-portage-atom = "0.9"
-resolvo = "0.10.2"
+portage-atom = { workspace = true }
+resolvo = { workspace = true }
 
 [dev-dependencies]
-criterion = "0.7"
+criterion = { workspace = true }
 
 [[bench]]
 name = "parsing"

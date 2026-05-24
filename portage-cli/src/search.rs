@@ -95,7 +95,9 @@ fn run_name(
                 };
                 if hit {
                     let key = format!("{}/{}", cat.name(), pkg.name());
-                    matched.entry(key).or_insert_with(|| (pkg.cpn().clone(), idx));
+                    matched
+                        .entry(key)
+                        .or_insert_with(|| (pkg.cpn().clone(), idx));
                 }
             }
         }

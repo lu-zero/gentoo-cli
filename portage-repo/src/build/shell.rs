@@ -11,13 +11,13 @@ use brush_core::{
 };
 use portage_metadata::{Eapi, EbuildMetadata, Phase, SrcUriEntry};
 
-use super::stubs;
-use crate::repo::ebuild::Ebuild;
-use crate::error::{Error, Result};
-use super::commands::inherit;
 use super::commands;
-use crate::repo::repository::Repository;
+use super::commands::inherit;
+use super::stubs;
 use super::ver_funcs;
+use crate::error::{Error, Result};
+use crate::repo::ebuild::Ebuild;
+use crate::repo::repository::Repository;
 
 /// Metadata variables extracted from a sourced ebuild.
 ///
@@ -46,23 +46,23 @@ const METADATA_VARS: &[&str] = &[
 /// Maps a portage phase name to (EBUILD_PHASE value, function name).
 fn phase_to_func(phase: &str) -> (&str, &str) {
     match phase {
-        "pretend"   => ("pretend",   "pkg_pretend"),
-        "setup"     => ("setup",     "pkg_setup"),
-        "unpack"    => ("unpack",    "src_unpack"),
-        "prepare"   => ("prepare",   "src_prepare"),
+        "pretend" => ("pretend", "pkg_pretend"),
+        "setup" => ("setup", "pkg_setup"),
+        "unpack" => ("unpack", "src_unpack"),
+        "prepare" => ("prepare", "src_prepare"),
         "configure" => ("configure", "src_configure"),
-        "compile"   => ("compile",   "src_compile"),
-        "test"      => ("test",      "src_test"),
-        "install"   => ("install",   "src_install"),
-        "preinst"   => ("preinst",   "pkg_preinst"),
-        "postinst"  => ("postinst",  "pkg_postinst"),
-        "prerm"     => ("prerm",     "pkg_prerm"),
-        "postrm"    => ("postrm",    "pkg_postrm"),
-        "nofetch"   => ("nofetch",   "pkg_nofetch"),
-        "info"      => ("info",      "pkg_info"),
-        "config"    => ("config",    "pkg_config"),
+        "compile" => ("compile", "src_compile"),
+        "test" => ("test", "src_test"),
+        "install" => ("install", "src_install"),
+        "preinst" => ("preinst", "pkg_preinst"),
+        "postinst" => ("postinst", "pkg_postinst"),
+        "prerm" => ("prerm", "pkg_prerm"),
+        "postrm" => ("postrm", "pkg_postrm"),
+        "nofetch" => ("nofetch", "pkg_nofetch"),
+        "info" => ("info", "pkg_info"),
+        "config" => ("config", "pkg_config"),
         // accept raw function names too
-        other       => (other, other),
+        other => (other, other),
     }
 }
 
@@ -572,11 +572,12 @@ impl EbuildShell {
         stubs::register(&mut shell).await?;
 
         // Register `inherit` with a shared eclass AST cache.
-        let inherit_reg = brush_core::builtins::builtin::<inherit::InheritCommand, _>()
-            .with_state(inherit::InheritState {
+        let inherit_reg = brush_core::builtins::builtin::<inherit::InheritCommand, _>().with_state(
+            inherit::InheritState {
                 inherited: Vec::new(),
                 cache: eclass_cache,
-            });
+            },
+        );
         shell.register_builtin("inherit", inherit_reg);
 
         // Register PMS 12.3 utility builtins (has, use, usev, usex, etc.).
@@ -861,7 +862,10 @@ impl EbuildShell {
         }
         self.set_var("INHERIT", "");
         self.set_var("INHERITED", "");
-        if let Some(state) = self.shell.builtin_state_mut_of::<inherit::InheritCommand>("inherit") {
+        if let Some(state) = self
+            .shell
+            .builtin_state_mut_of::<inherit::InheritCommand>("inherit")
+        {
             state.inherited.clear();
         }
 
@@ -966,8 +970,7 @@ impl EbuildShell {
         if let Some(bin_path) = Self::find_portage_bin_path() {
             self.set_var("PORTAGE_BIN_PATH", &bin_path.to_string_lossy());
             let helpers = bin_path.join("ebuild-helpers");
-            let cur_path =
-                std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin".to_string());
+            let cur_path = std::env::var("PATH").unwrap_or_else(|_| "/usr/bin:/bin".to_string());
             self.set_var("PATH", &format!("{}:{cur_path}", helpers.display()));
         }
 
@@ -981,8 +984,18 @@ impl EbuildShell {
 
         // Pass through build-tool variables from the caller's environment.
         for var in &[
-            "MAKEOPTS", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "LDFLAGS", "CC", "CXX", "AR",
-            "RANLIB", "NM", "STRIP", "PKG_CONFIG",
+            "MAKEOPTS",
+            "CFLAGS",
+            "CXXFLAGS",
+            "CPPFLAGS",
+            "LDFLAGS",
+            "CC",
+            "CXX",
+            "AR",
+            "RANLIB",
+            "NM",
+            "STRIP",
+            "PKG_CONFIG",
         ] {
             if let Ok(val) = std::env::var(var) {
                 self.set_var(var, &val);
@@ -1037,14 +1050,21 @@ impl EbuildShell {
     ///                 function name (`"src_compile"`)
     /// * `work_root` – root for build dirs; `work/`, `temp/`, `image/` are
     ///                 created beneath it
-    pub async fn run_phase(&mut self, ebuild: &Ebuild, phase: &str, work_root: &Path) -> Result<()> {
+    pub async fn run_phase(
+        &mut self,
+        ebuild: &Ebuild,
+        phase: &str,
+        work_root: &Path,
+    ) -> Result<()> {
         let category = ebuild.category();
         let pn = ebuild.name();
         let version = ebuild.version();
         let pvr = version.to_string();
         let pr = format!("r{}", version.revision.0);
         let pv = if version.revision.0 > 0 {
-            pvr.strip_suffix(&format!("-{pr}")).unwrap_or(&pvr).to_owned()
+            pvr.strip_suffix(&format!("-{pr}"))
+                .unwrap_or(&pvr)
+                .to_owned()
         } else {
             pvr.clone()
         };
@@ -1113,9 +1133,27 @@ impl EbuildShell {
 
         // Clear eclass accumulation state (same as source_ebuild).
         let accum_vars: &[&str] = if eapi >= Eapi::Eight {
-            &["IUSE","REQUIRED_USE","DEPEND","BDEPEND","RDEPEND","PDEPEND","IDEPEND","PROPERTIES","RESTRICT"]
+            &[
+                "IUSE",
+                "REQUIRED_USE",
+                "DEPEND",
+                "BDEPEND",
+                "RDEPEND",
+                "PDEPEND",
+                "IDEPEND",
+                "PROPERTIES",
+                "RESTRICT",
+            ]
         } else {
-            &["IUSE","REQUIRED_USE","DEPEND","BDEPEND","RDEPEND","PDEPEND","IDEPEND"]
+            &[
+                "IUSE",
+                "REQUIRED_USE",
+                "DEPEND",
+                "BDEPEND",
+                "RDEPEND",
+                "PDEPEND",
+                "IDEPEND",
+            ]
         };
         let e_vars: &[&str] = if eapi >= Eapi::Eight {
             inherit::E_VARS_ALL
@@ -1128,7 +1166,10 @@ impl EbuildShell {
         }
         self.set_var("INHERIT", "");
         self.set_var("INHERITED", "");
-        if let Some(state) = self.shell.builtin_state_mut_of::<inherit::InheritCommand>("inherit") {
+        if let Some(state) = self
+            .shell
+            .builtin_state_mut_of::<inherit::InheritCommand>("inherit")
+        {
             state.inherited.clear();
         }
 
@@ -1153,7 +1194,11 @@ impl EbuildShell {
         // Source the ebuild — defines all phase functions and global variables.
         let params = self.shell.default_exec_params();
         self.shell
-            .source_script(ebuild.path().as_std_path(), std::iter::empty::<&str>(), &params)
+            .source_script(
+                ebuild.path().as_std_path(),
+                std::iter::empty::<&str>(),
+                &params,
+            )
             .await
             .map_err(|e| Error::Shell(format!("sourcing {}: {e}", ebuild.path())))?;
 
@@ -1427,9 +1472,7 @@ impl EbuildShell {
 fn strip_jobserver_tokens(flags: &str) -> String {
     let cleaned: Vec<&str> = flags
         .split_whitespace()
-        .filter(|tok| {
-            !tok.starts_with("--jobserver-auth=") && !tok.starts_with("--jobserver-fds=")
-        })
+        .filter(|tok| !tok.starts_with("--jobserver-auth=") && !tok.starts_with("--jobserver-fds="))
         .collect();
     cleaned.join(" ")
 }
@@ -1447,7 +1490,11 @@ fn collect_src_filenames(
         match entry {
             SrcUriEntry::Uri { filename, .. } => files.push(filename.clone()),
             SrcUriEntry::Renamed { target, .. } => files.push(target.clone()),
-            SrcUriEntry::UseConditional { flag, negated, entries } => {
+            SrcUriEntry::UseConditional {
+                flag,
+                negated,
+                entries,
+            } => {
                 let flag_set = use_flags.contains(flag.as_str());
                 // Include when: (not negated AND flag set) OR (negated AND flag not set).
                 if flag_set != *negated {

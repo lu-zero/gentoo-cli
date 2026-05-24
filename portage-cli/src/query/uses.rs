@@ -4,19 +4,16 @@ use std::path::Path;
 use portage_metadata::IUseDefault;
 use portage_repo::Repository;
 
-use crate::error::{Error, Result};
 use super::which::dep_matches_cpv;
+use crate::error::{Error, Result};
 use portage_atom::Dep;
 
 pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
     let repo = Repository::open(repo_path).map_err(|e| Error::Other(e.to_string()))?;
 
     // Build USE flag description map lazily
-    let use_descs: HashMap<String, String> = repo
-        .use_desc()
-        .unwrap_or_default()
-        .into_iter()
-        .collect();
+    let use_descs: HashMap<String, String> =
+        repo.use_desc().unwrap_or_default().into_iter().collect();
 
     let ebuilds: Vec<_> = repo
         .ebuilds()

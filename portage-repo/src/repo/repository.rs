@@ -200,11 +200,11 @@ pub enum ProfileUpdate {
 }
 
 use super::category::Category;
-use crate::error::{Error, Result};
 use super::layout::LayoutConf;
 use super::profile::{Profile, ProfileDesc, ProfileStack};
 use super::use_expand::UseExpand;
 use super::util;
+use crate::error::{Error, Result};
 
 /// A Gentoo ebuild repository.
 ///

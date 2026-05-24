@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use portage_atom::{Cpv, DepEntry};
 use portage_metadata::Eapi;
 
+use crate::Result;
 use crate::contents::ContentsEntry;
 use crate::error::Error;
-use crate::Result;
 
 /// A package installed in the VDB.
 ///
@@ -63,10 +63,7 @@ impl InstalledPackage {
         let p = self.path.join(name);
         std::fs::read_to_string(&p)
             .map(|s| s.trim().to_string())
-            .map_err(|source| Error::Io {
-                path: p,
-                source,
-            })
+            .map_err(|source| Error::Io { path: p, source })
     }
 
     /// Read a single metadata file, returning `None` if it doesn't exist.
@@ -90,11 +87,10 @@ impl InstalledPackage {
     /// The EAPI this package was built with.
     pub fn eapi(&self) -> Result<Eapi> {
         let raw = self.read_field("EAPI")?;
-        raw.parse()
-            .map_err(|_| Error::MalformedPackage {
-                path: self.path.clone(),
-                reason: format!("invalid EAPI: {raw}"),
-            })
+        raw.parse().map_err(|_| Error::MalformedPackage {
+            path: self.path.clone(),
+            reason: format!("invalid EAPI: {raw}"),
+        })
     }
 
     /// The slot (may include subslot, e.g. `0/5.1`).
@@ -110,58 +106,55 @@ impl InstalledPackage {
     /// USE flags active at build time (space-separated).
     pub fn use_flags(&self) -> Result<Vec<String>> {
         let raw = self.read_field("USE")?;
-        Ok(raw
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect())
+        Ok(raw.split_whitespace().map(|s| s.to_string()).collect())
     }
 
     /// IUSE flags defined by the package (space-separated).
     pub fn iuse(&self) -> Result<Vec<String>> {
         let raw = self.read_field("IUSE")?;
-        Ok(raw
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect())
+        Ok(raw.split_whitespace().map(|s| s.to_string()).collect())
     }
 
     /// Build timestamp (Unix epoch).
     pub fn build_time(&self) -> Result<Option<u64>> {
         self.read_field_opt("BUILD_TIME")?
-            .map(|s| s.parse().map_err(|_| Error::MalformedPackage {
-                path: self.path.clone(),
-                reason: format!("invalid BUILD_TIME: {s}"),
-            }))
+            .map(|s| {
+                s.parse().map_err(|_| Error::MalformedPackage {
+                    path: self.path.clone(),
+                    reason: format!("invalid BUILD_TIME: {s}"),
+                })
+            })
             .transpose()
     }
 
     /// Installed size in bytes.
     pub fn size(&self) -> Result<Option<u64>> {
         self.read_field_opt("SIZE")?
-            .map(|s| s.parse().map_err(|_| Error::MalformedPackage {
-                path: self.path.clone(),
-                reason: format!("invalid SIZE: {s}"),
-            }))
+            .map(|s| {
+                s.parse().map_err(|_| Error::MalformedPackage {
+                    path: self.path.clone(),
+                    reason: format!("invalid SIZE: {s}"),
+                })
+            })
             .transpose()
     }
 
     /// Installation counter (monotonically increasing).
     pub fn counter(&self) -> Result<Option<u64>> {
         self.read_field_opt("COUNTER")?
-            .map(|s| s.parse().map_err(|_| Error::MalformedPackage {
-                path: self.path.clone(),
-                reason: format!("invalid COUNTER: {s}"),
-            }))
+            .map(|s| {
+                s.parse().map_err(|_| Error::MalformedPackage {
+                    path: self.path.clone(),
+                    reason: format!("invalid COUNTER: {s}"),
+                })
+            })
             .transpose()
     }
 
     /// Keywords (space-separated).
     pub fn keywords(&self) -> Result<Vec<String>> {
         let raw = self.read_field("KEYWORDS")?;
-        Ok(raw
-            .split_whitespace()
-            .map(|s| s.to_string())
-            .collect())
+        Ok(raw.split_whitespace().map(|s| s.to_string()).collect())
     }
 
     /// License string.
@@ -245,7 +238,12 @@ mod tests {
     use super::*;
     use std::fs;
 
-    fn make_fake_pkg(dir: &std::path::Path, category: &str, pf: &str, fields: &[(&str, &str)]) -> PathBuf {
+    fn make_fake_pkg(
+        dir: &std::path::Path,
+        category: &str,
+        pf: &str,
+        fields: &[(&str, &str)],
+    ) -> PathBuf {
         let pkg_dir = dir.join(category).join(pf);
         fs::create_dir_all(&pkg_dir).unwrap();
         for (name, content) in fields {
@@ -275,7 +273,10 @@ mod tests {
 
         assert_eq!(pkg.category(), "app-shells");
         assert_eq!(pkg.pf(), "bash-5.3_p9-r2");
-        assert_eq!(pkg.description().unwrap(), "The standard GNU Bourne again shell");
+        assert_eq!(
+            pkg.description().unwrap(),
+            "The standard GNU Bourne again shell"
+        );
         assert_eq!(pkg.slot().unwrap(), "0");
         assert_eq!(pkg.use_flags().unwrap(), vec!["net", "nls", "readline"]);
         assert_eq!(pkg.iuse().unwrap(), vec!["+net", "+nls", "+readline"]);

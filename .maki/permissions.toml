@@ -1,4 +1,6 @@
 [bash]
 allow = [
     "mkdir *",
+    "xxd *",
+    "cat *",
 ]

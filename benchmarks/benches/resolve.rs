@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
 #[cfg(all(feature = "mimalloc", not(feature = "dhat-heap")))]
 #[global_allocator]
@@ -14,11 +14,11 @@ static DHAT_ALLOC: dhat::Alloc = dhat::Alloc;
 
 use portage_atom::interner::Interned;
 use portage_atom::{Cpn, Cpv, Dep, Operator, Slot, SlotDep, SlotOperator};
-use portage_metadata::{Keyword, Stability};
 use portage_atom_pubgrub::{
     IUseDefault, InMemoryRepository, InstalledPackage, InstalledPolicy, PackageDeps,
     PackageVersions, PortageDependencyProvider, PortagePackage, PortageVersionSet, UseConfig,
 };
+use portage_metadata::{Keyword, Stability};
 use portage_repo::{ProfileStack, Repository};
 
 const DEFAULT_REPO: &str = "/var/db/repos/gentoo";
@@ -57,9 +57,7 @@ impl SystemConfig {
             .build()
             .expect("tokio runtime");
 
-        rt.block_on(async {
-            Self::load_async(repo_path).await
-        })
+        rt.block_on(async { Self::load_async(repo_path).await })
     }
 
     async fn load_async(repo_path: &str) -> Self {
@@ -93,7 +91,11 @@ impl SystemConfig {
             }
         };
         let make_conf = std::path::Path::new(DEFAULT_MAKE_CONF);
-        let extra = if make_conf.exists() { vec![make_conf] } else { vec![] };
+        let extra = if make_conf.exists() {
+            vec![make_conf]
+        } else {
+            vec![]
+        };
         if let Err(e) = stack.configure_shell(&mut shell, &extra).await {
             eprintln!("warn: configure_shell failed: {e}");
         }
@@ -103,23 +105,24 @@ impl SystemConfig {
         // (child make.defaults that set USE without ${USE} overwrite parent
         // flags).  Fall back to portageq for the authoritative values.
         let accept_keywords = portageq_var("ACCEPT_KEYWORDS")
-            .unwrap_or_else(|| {
-                shell.get_var("ACCEPT_KEYWORDS").unwrap_or_default()
-            })
+            .unwrap_or_else(|| shell.get_var("ACCEPT_KEYWORDS").unwrap_or_default())
             .split_whitespace()
             .map(String::from)
             .collect();
 
         let effective_use = portageq_var("USE")
-            .unwrap_or_else(|| {
-                shell.get_var("USE").unwrap_or_default()
-            })
+            .unwrap_or_else(|| shell.get_var("USE").unwrap_or_default())
             .split_whitespace()
             .map(String::from)
             .filter(|f| !f.starts_with('-'))
             .collect();
 
-        SystemConfig { accept_keywords, effective_use, package_mask, package_use }
+        SystemConfig {
+            accept_keywords,
+            effective_use,
+            package_mask,
+            package_use,
+        }
     }
 
     fn unconfigured() -> Self {
@@ -148,12 +151,14 @@ impl SystemConfig {
         for kw in keywords {
             let arch = kw.arch.as_str();
             let accepted = match kw.stability {
-                Stability::Stable => {
-                    self.accept_keywords.iter().any(|a| a == arch || a == &format!("~{arch}"))
-                }
-                Stability::Testing => {
-                    self.accept_keywords.iter().any(|a| a == &format!("~{arch}"))
-                }
+                Stability::Stable => self
+                    .accept_keywords
+                    .iter()
+                    .any(|a| a == arch || a == &format!("~{arch}")),
+                Stability::Testing => self
+                    .accept_keywords
+                    .iter()
+                    .any(|a| a == &format!("~{arch}")),
                 Stability::Disabled | Stability::DisabledAll => false,
             };
             if accepted {
@@ -165,7 +170,9 @@ impl SystemConfig {
 
     /// Return true if the CPV (with its slot) matches any package.mask atom.
     fn is_masked(&self, cpv: &Cpv, slot: &Slot) -> bool {
-        self.package_mask.iter().any(|dep| dep_matches_cpv(dep, cpv, slot))
+        self.package_mask
+            .iter()
+            .any(|dep| dep_matches_cpv(dep, cpv, slot))
     }
 }
 
@@ -288,8 +295,11 @@ fn load_repo(repo_path: &str, sys: &SystemConfig) -> InMemoryRepository {
                     continue;
                 }
 
-                let iuse: Vec<Interned<portage_atom::interner::DefaultInterner>> =
-                    meta.iuse.iter().map(|i| Interned::intern(i.name())).collect();
+                let iuse: Vec<Interned<portage_atom::interner::DefaultInterner>> = meta
+                    .iuse
+                    .iter()
+                    .map(|i| Interned::intern(i.name()))
+                    .collect();
 
                 let iuse_defaults: HashMap<
                     Interned<portage_atom::interner::DefaultInterner>,
@@ -375,8 +385,7 @@ fn load_installed(vdb_path: &str) -> Vec<InstalledPackage> {
             let Ok(cpv) = Cpv::parse(&cpv_str) else {
                 continue;
             };
-            let slot_str = std::fs::read_to_string(pkg_path.join("SLOT"))
-                .unwrap_or_default();
+            let slot_str = std::fs::read_to_string(pkg_path.join("SLOT")).unwrap_or_default();
             let slot_part = slot_str.trim().split('/').next().unwrap_or("0");
             let slot = Interned::intern(slot_part);
             result.push(InstalledPackage {
@@ -415,8 +424,12 @@ fn parse_package_use_dir(path: &str) -> Result<Vec<(Dep, Vec<String>)>, std::io:
                 continue;
             }
             let mut parts = line.split_whitespace();
-            let Some(atom_str) = parts.next() else { continue };
-            let Ok(dep) = PDep::parse(atom_str) else { continue };
+            let Some(atom_str) = parts.next() else {
+                continue;
+            };
+            let Ok(dep) = PDep::parse(atom_str) else {
+                continue;
+            };
             let flags: Vec<String> = parts.map(String::from).collect();
             if !flags.is_empty() {
                 result.push((dep, flags));
@@ -479,21 +492,28 @@ fn bench_resolve(c: &mut Criterion) {
     for (label, atom) in TARGETS {
         let cpn = match Cpn::parse(atom) {
             Ok(c) => c,
-            Err(e) => { eprintln!("skip {atom}: {e}"); continue; }
+            Err(e) => {
+                eprintln!("skip {atom}: {e}");
+                continue;
+            }
         };
 
-        let mut provider =
-            build_provider(base_repo.clone(), sys.use_config(), &sys.package_use);
+        let mut provider = build_provider(base_repo.clone(), sys.use_config(), &sys.package_use);
         let pkgs = provider.packages_for_cpn(&cpn);
         if pkgs.is_empty() {
             eprintln!("skip {atom}: not found in provider");
             continue;
         }
-        let targets: Vec<_> = pkgs.into_iter().map(|p| (p, PortageVersionSet::any())).collect();
+        let targets: Vec<_> = pkgs
+            .into_iter()
+            .map(|p| (p, PortageVersionSet::any()))
+            .collect();
 
-        group.bench_with_input(BenchmarkId::new("portage-atom-pubgrub", label), label, |b, _| {
-            b.iter(|| criterion::black_box(provider.resolve_targets(targets.clone())))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("portage-atom-pubgrub", label),
+            label,
+            |b, _| b.iter(|| criterion::black_box(provider.resolve_targets(targets.clone()))),
+        );
     }
 
     group.finish();
@@ -533,7 +553,10 @@ fn bench_solution_size(c: &mut Criterion) {
             println!("  {label:<12} → not found in provider");
             continue;
         }
-        let targets: Vec<_> = pkgs.into_iter().map(|p| (p, PortageVersionSet::any())).collect();
+        let targets: Vec<_> = pkgs
+            .into_iter()
+            .map(|p| (p, PortageVersionSet::any()))
+            .collect();
         let mut p = build_provider(base_repo.clone(), sys.use_config(), &sys.package_use);
         for inst in &installed {
             p.add_installed(inst.clone());
@@ -542,7 +565,8 @@ fn bench_solution_size(c: &mut Criterion) {
             let dropped = p.dropped_deps();
             eprintln!("  {label}: {} deps dropped total", dropped.len());
             // Count drops per package name and show top 20
-            let mut counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+            let mut counts: std::collections::HashMap<String, usize> =
+                std::collections::HashMap::new();
             for (pkg, _) in dropped {
                 if !pkg.is_virtual() {
                     *counts.entry(pkg.cpn().to_string()).or_default() += 1;
@@ -561,14 +585,24 @@ fn bench_solution_size(c: &mut Criterion) {
                 vers.sort();
                 if let Some(latest) = vers.last() {
                     let deps = p.deps_for(&openssh_pkg, latest).unwrap_or_default();
-                    let has_pam = deps.iter().any(|(d, _)| !d.is_virtual() && d.cpn().package.as_str().contains("pam"));
-                    let has_libcrypt = deps.iter().any(|(d, _)| !d.is_virtual() && d.cpn().package.as_str().contains("libcrypt"));
-                    let has_openssl = deps.iter().any(|(d, _)| !d.is_virtual() && d.cpn().package.as_str().contains("openssl"));
+                    let has_pam = deps
+                        .iter()
+                        .any(|(d, _)| !d.is_virtual() && d.cpn().package.as_str().contains("pam"));
+                    let has_libcrypt = deps.iter().any(|(d, _)| {
+                        !d.is_virtual() && d.cpn().package.as_str().contains("libcrypt")
+                    });
+                    let has_openssl = deps.iter().any(|(d, _)| {
+                        !d.is_virtual() && d.cpn().package.as_str().contains("openssl")
+                    });
                     eprintln!(
                         "  openssh {latest}: {} merged deps | pam={has_pam} libcrypt={has_libcrypt} openssl={has_openssl}",
                         deps.len()
                     );
-                    for (d, _) in deps.iter().filter(|(d, _)| !d.is_virtual() && (d.cpn().package.as_str().contains("pam") || d.cpn().package.as_str().contains("libcrypt"))) {
+                    for (d, _) in deps.iter().filter(|(d, _)| {
+                        !d.is_virtual()
+                            && (d.cpn().package.as_str().contains("pam")
+                                || d.cpn().package.as_str().contains("libcrypt"))
+                    }) {
                         eprintln!("    dep: {d}");
                     }
                 }
@@ -587,10 +621,7 @@ fn bench_solution_size(c: &mut Criterion) {
             Ok(sol) => {
                 println!("  {label:<12} → {} packages", sol.iter().count());
                 let out_path = format!("/tmp/solver_{label}.txt");
-                let mut names: Vec<String> = sol
-                    .iter()
-                    .map(|(p, _)| p.cpn().to_string())
-                    .collect();
+                let mut names: Vec<String> = sol.iter().map(|(p, _)| p.cpn().to_string()).collect();
                 names.sort();
                 names.dedup();
                 std::fs::write(&out_path, names.join("\n") + "\n").ok();

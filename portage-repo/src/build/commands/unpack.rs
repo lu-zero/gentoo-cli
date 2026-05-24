@@ -28,7 +28,12 @@ impl builtins::Command for UnpackCommand {
     ) -> Result<brush_core::ExecutionResult, Self::Error> {
         let shell = context.shell;
 
-        let get = |var: &str| shell.env_str(var).map(|s| s.into_owned()).unwrap_or_default();
+        let get = |var: &str| {
+            shell
+                .env_str(var)
+                .map(|s| s.into_owned())
+                .unwrap_or_default()
+        };
         let distdir = {
             let s = get("DISTDIR");
             if s.is_empty() {
@@ -127,7 +132,12 @@ fn unpack_archive(src: &std::path::Path, cwd: &std::path::Path, eapi: u32) -> Re
         }
         unpack_piped("xz", &["-d", "-c", &src_s], &cwd.join(stem), cwd)
     } else if ext(".lzma") {
-        unpack_piped("xz", &["--format=lzma", "-d", "-c", &src_s], &cwd.join(stem), cwd)
+        unpack_piped(
+            "xz",
+            &["--format=lzma", "-d", "-c", &src_s],
+            &cwd.join(stem),
+            cwd,
+        )
     } else if ext(".zst") {
         unpack_piped("zstd", &["-d", "-c", &src_s], &cwd.join(stem), cwd)
     } else if ext(".7z") {

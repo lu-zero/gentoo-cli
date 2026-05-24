@@ -4,8 +4,8 @@ use std::path::Path;
 use portage_metadata::Stability;
 use portage_repo::Repository;
 
-use crate::error::{Error, Result};
 use super::which::dep_matches_cpv;
+use crate::error::{Error, Result};
 use portage_atom::Dep;
 
 pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
@@ -54,7 +54,12 @@ pub fn run(repo_path: &Path, atoms: &[String]) -> Result<()> {
         // Header
         let arches: Vec<String> = all_arches.into_iter().collect();
         let col_w = arches.iter().map(|a| a.len()).max().unwrap_or(4).max(4);
-        let ver_w = version_keywords.iter().map(|(v, _)| v.len()).max().unwrap_or(7).max(7);
+        let ver_w = version_keywords
+            .iter()
+            .map(|(v, _)| v.len())
+            .max()
+            .unwrap_or(7)
+            .max(7);
 
         print!("{:<ver_w$}", "version");
         for arch in &arches {

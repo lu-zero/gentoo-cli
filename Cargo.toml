@@ -14,6 +14,37 @@ members = [
     "benchmarks",
 ]
 
+[workspace.dependencies]
+# Workspace members (path + version for publishable crates)
+gentoo-interner = { version = "0.3", path = "gentoo-interner" }
+gentoo-core = { version = "0.5", path = "gentoo-core" }
+gentoo-stages = { version = "0.5", path = "gentoo-stages" }
+portage-atom = { version = "0.9", path = "portage-atom" }
+portage-metadata = { version = "0.7", path = "portage-metadata" }
+portage-atom-pubgrub = { version = "0.4", path = "portage-atom-pubgrub" }
+portage-atom-resolvo = { version = "0.7", path = "portage-atom-resolvo" }
+portage-repo = { path = "portage-repo" }
+portage-vdb = { path = "portage-vdb" }
+
+# Shared external dependencies
+bon = "3"
+camino = "1"
+cfg-if = "1.0.4"
+clap = { version = "4", features = ["derive"] }
+criterion = "0.7"
+lasso = { version = "0.7", features = ["multi-threaded"] }
+mimalloc = "0.1.50"
+parking_lot = "0.12"
+papaya = "0.2"
+pubgrub = "0.4"
+resolvo = "0.10.2"
+serde = { version = "1.0", features = ["derive"] }
+symbol_table = { version = "0.5", features = ["global"] }
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+winnow = { version = "1.0", features = ["ascii"] }
+
 [profile.release]
 opt-level = 3
 lto = true
@@ -22,13 +53,3 @@ lto = true
 inherits = "release"
 debug = 1
 lto = false
-
-[patch.crates-io]
-gentoo-interner      = { path = "gentoo-interner" }
-gentoo-core          = { path = "gentoo-core" }
-portage-atom         = { path = "portage-atom" }
-portage-metadata     = { path = "portage-metadata" }
-portage-atom-pubgrub = { path = "portage-atom-pubgrub" }
-portage-atom-resolvo = { path = "portage-atom-resolvo" }
-portage-repo         = { path = "portage-repo" }
-gentoo-stages        = { path = "gentoo-stages" }

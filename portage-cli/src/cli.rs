@@ -117,6 +117,10 @@ pub struct Cli {
     #[arg(long, value_name = "PATH")]
     pub config_root: Option<String>,
 
+    /// Override VDB path (default: $ROOT/var/db/pkg)
+    #[arg(long, value_name = "PATH")]
+    pub vdb: Option<String>,
+
     #[command(subcommand)]
     pub applet: Option<Applet>,
 

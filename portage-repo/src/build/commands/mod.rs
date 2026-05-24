@@ -25,6 +25,6 @@ pub(crate) use emake::EmakeCommand;
 pub(crate) use export_functions::ExportFunctionsCommand;
 pub(crate) use has::{HasCommand, HasvCommand, InIuseCommand};
 pub(crate) use output::{EbeginCommand, EchoMessageCommand, EendCommand};
-pub(crate) use phase_funcs::{EapiPredicateCommand, EbuildPhaseFuncsCommand, EAPI_PREDICATE_NAMES};
+pub(crate) use phase_funcs::{EAPI_PREDICATE_NAMES, EapiPredicateCommand, EbuildPhaseFuncsCommand};
 pub(crate) use unpack::UnpackCommand;
-pub(crate) use use_flag::{UseCommand, UseEnableCommand, UsevCommand, UsexCommand, UseWithCommand};
+pub(crate) use use_flag::{UseCommand, UseEnableCommand, UseWithCommand, UsevCommand, UsexCommand};

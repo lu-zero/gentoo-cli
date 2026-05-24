@@ -76,9 +76,13 @@ fn bench_iuse(c: &mut Criterion) {
     let mut group = c.benchmark_group("comparison/IUse::parse_line");
 
     for (name, input) in [("small", IUSE_SMALL), ("large", IUSE_LARGE)] {
-        group.bench_with_input(BenchmarkId::new("portage-metadata", name), input, |b, input| {
-            b.iter(|| black_box(portage_metadata::IUse::parse_line(black_box(input)).unwrap()))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("portage-metadata", name),
+            input,
+            |b, input| {
+                b.iter(|| black_box(portage_metadata::IUse::parse_line(black_box(input)).unwrap()))
+            },
+        );
 
         group.bench_with_input(BenchmarkId::new("pkgcraft", name), input, |b, input| {
             b.iter(|| {

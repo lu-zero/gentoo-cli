@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+use gentoo_core::Arch;
 use portage_atom::interner::{DefaultInterner, Interned};
 use portage_atom::{Cpn, Cpv, Dep, Operator};
 use portage_atom_pubgrub::{
@@ -9,12 +10,11 @@ use portage_atom_pubgrub::{
 };
 use portage_metadata::{Keyword, Stability};
 use portage_repo::Repository;
-use gentoo_core::Arch;
 
 fn keyword_accepts(keywords: &[Keyword], arch: &str) -> bool {
-    keywords
-        .iter()
-        .any(|kw| kw.arch.as_str() == arch && matches!(kw.stability, Stability::Stable | Stability::Testing))
+    keywords.iter().any(|kw| {
+        kw.arch.as_str() == arch && matches!(kw.stability, Stability::Stable | Stability::Testing)
+    })
 }
 
 struct RepoData {
@@ -40,7 +40,9 @@ impl PackageRepository for Adapter<'_> {
             .map(|entries| {
                 entries
                     .iter()
-                    .filter(|(_, cache)| keyword_accepts(&cache.metadata.keywords, self.arch.as_str()))
+                    .filter(|(_, cache)| {
+                        keyword_accepts(&cache.metadata.keywords, self.arch.as_str())
+                    })
                     .map(|(cpv, cache)| {
                         let meta = &cache.metadata;
                         let slot = if meta.slot.slot.as_str().is_empty() {
@@ -50,25 +52,28 @@ impl PackageRepository for Adapter<'_> {
                         };
                         let subslot = meta.slot.subslot;
                         let repo = Some(Interned::<DefaultInterner>::intern(&self.data.repo_name));
-                        let iuse: Vec<Interned<DefaultInterner>> =
-                            meta.iuse.iter().map(|iu| Interned::intern(iu.name())).collect();
-                        let iuse_defaults: HashMap<Interned<DefaultInterner>, IUseDefault> =
-                            meta.iuse
-                                .iter()
-                                .filter_map(|iu| {
-                                    iu.default.map(|d| {
-                                        let val = match d {
-                                            portage_metadata::IUseDefault::Enabled => {
-                                                IUseDefault::Enabled
-                                            }
-                                            portage_metadata::IUseDefault::Disabled => {
-                                                IUseDefault::Disabled
-                                            }
-                                        };
-                                        (Interned::intern(iu.name()), val)
-                                    })
+                        let iuse: Vec<Interned<DefaultInterner>> = meta
+                            .iuse
+                            .iter()
+                            .map(|iu| Interned::intern(iu.name()))
+                            .collect();
+                        let iuse_defaults: HashMap<Interned<DefaultInterner>, IUseDefault> = meta
+                            .iuse
+                            .iter()
+                            .filter_map(|iu| {
+                                iu.default.map(|d| {
+                                    let val = match d {
+                                        portage_metadata::IUseDefault::Enabled => {
+                                            IUseDefault::Enabled
+                                        }
+                                        portage_metadata::IUseDefault::Disabled => {
+                                            IUseDefault::Disabled
+                                        }
+                                    };
+                                    (Interned::intern(iu.name()), val)
                                 })
-                                .collect();
+                            })
+                            .collect();
                         let deps = PackageDeps {
                             depend: meta.depend.clone(),
                             rdepend: meta.rdepend.clone(),
@@ -164,13 +169,11 @@ pub fn depgraph(
     arch: &Arch,
     use_flags: Option<&HashSet<String>>,
 ) -> crate::error::Result<()> {
-    let repo = Repository::open(repo_path).map_err(|e| crate::error::Error::Other(e.to_string()))?;
+    let repo =
+        Repository::open(repo_path).map_err(|e| crate::error::Error::Other(e.to_string()))?;
     let data = load_repo(&repo);
 
-    let adapter = Adapter {
-        data: &data,
-        arch,
-    };
+    let adapter = Adapter { data: &data, arch };
 
     let mut use_config = UseConfig::new();
     if let Some(flags) = use_flags {
@@ -232,9 +235,11 @@ pub fn depgraph(
         for edge in &edges {
             println!(
                 "  {}-{} --[{}]--> {}-{}",
-                edge.from.0, edge.from.1,
+                edge.from.0,
+                edge.from.1,
                 class_label(edge.class),
-                edge.to.0, edge.to.1,
+                edge.to.0,
+                edge.to.1,
             );
         }
     }

@@ -73,36 +73,29 @@ pub async fn regen_cache(
     let done = Arc::new(AtomicUsize::new(0));
     let on_progress = Arc::new(on_progress);
 
-    source_parallel(
-        repo,
-        masters,
-        ebuilds,
-        &opts.source,
-        &ctx,
-        {
-            let checksum_cache = Arc::clone(&checksum_cache);
-            let errors = Arc::clone(&errors);
-            let done = Arc::clone(&done);
-            move |ebuild, result| {
-                let n = done.fetch_add(1, Ordering::Relaxed) + 1;
-                on_progress(n, total);
-                match result {
-                    Err(e) => {
-                        eprintln!("\nERROR {}: {e}", ebuild.cpv());
-                        errors.fetch_add(1, Ordering::Relaxed);
-                    }
-                    Ok(sourced) => {
-                        if let Some(ref dir) = out_dir {
-                            if let Err(e) = write_entry(&ebuild, sourced, dir, &checksum_cache) {
-                                eprintln!("\nWRITE ERROR {}: {e}", ebuild.cpv());
-                                errors.fetch_add(1, Ordering::Relaxed);
-                            }
+    source_parallel(repo, masters, ebuilds, &opts.source, &ctx, {
+        let checksum_cache = Arc::clone(&checksum_cache);
+        let errors = Arc::clone(&errors);
+        let done = Arc::clone(&done);
+        move |ebuild, result| {
+            let n = done.fetch_add(1, Ordering::Relaxed) + 1;
+            on_progress(n, total);
+            match result {
+                Err(e) => {
+                    eprintln!("\nERROR {}: {e}", ebuild.cpv());
+                    errors.fetch_add(1, Ordering::Relaxed);
+                }
+                Ok(sourced) => {
+                    if let Some(ref dir) = out_dir {
+                        if let Err(e) = write_entry(&ebuild, sourced, dir, &checksum_cache) {
+                            eprintln!("\nWRITE ERROR {}: {e}", ebuild.cpv());
+                            errors.fetch_add(1, Ordering::Relaxed);
                         }
                     }
                 }
             }
-        },
-    )
+        }
+    })
     .await?;
 
     Ok(RegenStats {
@@ -111,10 +104,7 @@ pub async fn regen_cache(
     })
 }
 
-fn eclass_md5(
-    path: &Utf8Path,
-    cache: &ChecksumCache,
-) -> std::result::Result<md5::Digest, String> {
+fn eclass_md5(path: &Utf8Path, cache: &ChecksumCache) -> std::result::Result<md5::Digest, String> {
     let pinned = cache.pin();
     if let Some(&d) = pinned.get(path.as_std_path()) {
         return Ok(d);
@@ -147,7 +137,11 @@ fn write_entry(
         })
         .collect::<std::result::Result<_, String>>()?;
 
-    let entry = CacheEntry { metadata, md5: Some(ebuild_md5), eclasses };
+    let entry = CacheEntry {
+        metadata,
+        md5: Some(ebuild_md5),
+        eclasses,
+    };
 
     // Write to `{name}.tmp` then rename — POSIX rename is atomic on the same
     // filesystem, so a crash mid-write can never leave a truncated cache file.
@@ -190,10 +184,7 @@ pub struct CacheReadOpts {
 /// can appear more than once if the same package is present in multiple
 /// repos — pass [`CacheReadOpts::latest_per_cpn`] to keep only the
 /// highest-version entry per Cpn (across all repos).
-pub fn cache_cpvs(
-    repos: &[Repository],
-    opts: &CacheReadOpts,
-) -> Vec<(portage_atom::Cpv, PathBuf)> {
+pub fn cache_cpvs(repos: &[Repository], opts: &CacheReadOpts) -> Vec<(portage_atom::Cpv, PathBuf)> {
     let mut items: Vec<(portage_atom::Cpv, PathBuf)> = Vec::with_capacity(32_768);
     for repo in repos {
         let cache_dir = repo.cache_dir();

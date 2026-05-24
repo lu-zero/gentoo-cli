@@ -35,7 +35,9 @@ where
 
 fn is_valid_use_flag_name(name: &str) -> bool {
     let mut bytes = name.bytes();
-    let Some(first) = bytes.next() else { return false; };
+    let Some(first) = bytes.next() else {
+        return false;
+    };
     first.is_ascii_alphanumeric()
         && bytes.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'+' | b'@' | b'-'))
 }
@@ -192,9 +194,12 @@ mod tests {
     fn test_flag_name_validation() {
         fn is_valid_use_flag_name(name: &str) -> bool {
             let mut bytes = name.bytes();
-            let Some(first) = bytes.next() else { return false; };
+            let Some(first) = bytes.next() else {
+                return false;
+            };
             first.is_ascii_alphanumeric()
-                && bytes.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'+' | b'@' | b'-'))
+                && bytes
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'+' | b'@' | b'-'))
         }
 
         assert!(is_valid_use_flag_name("ssl"));

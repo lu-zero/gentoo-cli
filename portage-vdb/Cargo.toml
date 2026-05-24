@@ -11,10 +11,14 @@ keywords = ["gentoo", "portage", "vdb", "installed"]
 categories = ["os::unix-apis", "development-tools"]
 
 [dependencies]
-portage-atom = "0.9"
-portage-metadata = "0.7"
-gentoo-core = "0.5"
-thiserror = "2"
+portage-atom = { workspace = true }
+portage-metadata = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = { workspace = true }
+criterion = { workspace = true }
+
+[[bench]]
+name = "vdb"
+harness = false
