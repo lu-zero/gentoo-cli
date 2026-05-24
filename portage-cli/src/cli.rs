@@ -258,30 +258,6 @@ pub enum Applet {
         command: Option<GlsaCommand>,
     },
 
-    #[command(about = "Find package owning a file")]
-    File {
-        #[arg(required = true)]
-        paths: Vec<String>,
-    },
-
-    #[command(about = "List files owned by a package")]
-    List {
-        #[arg(trailing_var_arg = true)]
-        atoms: Vec<String>,
-    },
-
-    #[command(about = "Disk usage of installed packages")]
-    Size {
-        #[arg(trailing_var_arg = true)]
-        atoms: Vec<String>,
-    },
-
-    #[command(about = "Verify installed package integrity")]
-    Check {
-        #[arg(trailing_var_arg = true)]
-        atoms: Vec<String>,
-    },
-
     #[command(about = "Analyze emerge.log")]
     Log {
         #[command(subcommand)]

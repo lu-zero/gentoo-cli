@@ -110,23 +110,6 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
         }
         Applet::News { command } => run_news(command),
         Applet::Glsa { command } => run_glsa(command),
-        Applet::File { paths } => {
-            let vdb = open_vdb(globals)?;
-            vdb::file(&vdb, paths)
-        }
-        Applet::List { atoms } => {
-            let vdb = open_vdb(globals)?;
-            vdb::list(&vdb, atoms)
-        }
-        Applet::Size { atoms } => {
-            let vdb = open_vdb(globals)?;
-            vdb::size(&vdb, atoms)
-        }
-        Applet::Check { atoms } => {
-            let parsed = parse_atoms(atoms);
-            eprintln!("check: atoms={:?}", parsed);
-            Err(error::Error::NotImplemented("check".into()))
-        }
         Applet::Log { command } => run_log(command),
         Applet::Grep { pattern, paths } => {
             eprintln!("grep: pattern={} paths={:?}", pattern, paths);

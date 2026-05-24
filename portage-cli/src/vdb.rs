@@ -4,83 +4,6 @@ use portage_vdb::Vdb;
 
 use crate::error::{Error, Result};
 
-/// `em file <path>...` — find which installed package owns each file.
-/// Equivalent to `qfile`.
-pub fn file(vdb: &Vdb, paths: &[String]) -> Result<()> {
-    for path_str in paths {
-        let path = Path::new(path_str);
-        if let Some(pkg) = vdb.owner(path) {
-            println!("{} ({})", pkg, path_str);
-            continue;
-        }
-        // Try resolving symlinks (e.g. /bin/ls -> /usr/bin/ls)
-        let resolved = resolve_path(path_str);
-        if resolved != path && vdb.owner(&resolved).is_some() {
-            let pkg = vdb.owner(&resolved).unwrap();
-            println!("{} ({})", pkg, path_str);
-            continue;
-        }
-        println!("*no owner* ({})", path_str);
-    }
-    Ok(())
-}
-
-/// `em list [atoms]...` — list files owned by installed packages.
-/// Equivalent to `qlist`.
-pub fn list(vdb: &Vdb, atoms: &[String]) -> Result<()> {
-    if atoms.is_empty() {
-        // List all installed packages
-        for pkg in vdb.packages() {
-            println!("{}", pkg);
-        }
-        return Ok(());
-    }
-
-    for raw in atoms {
-        let matched = find_packages(vdb, raw);
-        if matched.is_empty() {
-            eprintln!("no installed package matches '{}'", raw);
-            continue;
-        }
-        for pkg in matched {
-            match pkg.contents() {
-                Ok(entries) => {
-                    for entry in entries {
-                        if !matches!(entry.kind, portage_vdb::ContentsKind::Dir) {
-                            println!("{}", entry.path.display());
-                        }
-                    }
-                }
-                Err(e) => eprintln!("{}: {}", pkg, e),
-            }
-        }
-    }
-    Ok(())
-}
-
-/// `em size [atoms]...` — show disk usage of installed packages.
-/// Equivalent to `qsize`.
-pub fn size(vdb: &Vdb, atoms: &[String]) -> Result<()> {
-    if atoms.is_empty() {
-        for pkg in vdb.packages() {
-            print_pkg_size(&pkg)?;
-        }
-        return Ok(());
-    }
-
-    for raw in atoms {
-        let matched = find_packages(vdb, raw);
-        if matched.is_empty() {
-            eprintln!("no installed package matches '{}'", raw);
-            continue;
-        }
-        for pkg in matched {
-            print_pkg_size(&pkg)?;
-        }
-    }
-    Ok(())
-}
-
 /// `em query belongs <file>...` — find which package owns a file.
 pub fn query_belongs(vdb: &Vdb, files: &[String]) -> Result<()> {
     for file_str in files {
@@ -183,8 +106,6 @@ fn find_packages(vdb: &Vdb, pattern: &str) -> Vec<portage_vdb::InstalledPackage>
 
 fn resolve_path(path_str: &str) -> std::path::PathBuf {
     let path = Path::new(path_str);
-    // Resolve symlinks so that /bin/ls -> /usr/bin/ls is handled correctly.
-    // We only canonicalize the final component, not parent dirs.
     match std::fs::canonicalize(path) {
         Ok(resolved) => resolved,
         Err(_) => path.to_path_buf(),
