@@ -20,9 +20,9 @@ symbol-table = ["portage-atom/symbol-table", "portage-metadata/symbol-table"]
 portage-atom = "0.9"
 portage-metadata = "0.7"
 gentoo-core = "0.5"
-brush-core = { path = "../../brush/brush-core", features = ["experimental-parser"] }
-brush-builtins = { path = "../../brush/brush-builtins" }
-brush-parser = { path = "../../brush/brush-parser" }
+brush-core = { git = "https://github.com/lu-zero/brush.git", branch = "for-portage-repo", features = ["experimental-parser"] }
+brush-builtins = { git = "https://github.com/lu-zero/brush.git", branch = "for-portage-repo" }
+brush-parser = { git = "https://github.com/lu-zero/brush.git", branch = "for-portage-repo" }
 clap = { version = "4", features = ["derive"] }
 tokio = { version = "1", features = ["rt"] }
 regex = "1"
@@ -46,12 +46,3 @@ libc = "0.2"
 tempfile = "3"
 tokio = { version = "1", features = ["macros"] }
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-
-[profile.profiling]
-inherits = "release"
-debug = 1
-lto = false

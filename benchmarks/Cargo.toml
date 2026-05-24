@@ -40,10 +40,6 @@ dhat = { version = "0.3.3", optional = true }
 criterion = { version = "0.5", features = ["html_reports"] }
 tokio = { version = "1", features = ["rt"] }
 
-[profile.profiling]
-inherits = "release"
-debug = 1
-lto = false
 
 [[bench]]
 name = "dep_parsing"

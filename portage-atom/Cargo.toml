@@ -31,11 +31,6 @@ path = "examples/parse_atoms.rs"
 name = "parse_dep_string"
 path = "examples/parse_dep_string.rs"
 
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-
 [dev-dependencies]
 criterion = "0.7"
 

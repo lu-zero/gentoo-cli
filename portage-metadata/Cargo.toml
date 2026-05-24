@@ -24,6 +24,3 @@ symbol-table = ["portage-atom/symbol-table"]
 name = "parse_cache"
 path = "examples/parse_cache.rs"
 
-[profile.release]
-opt-level = 3
-lto = true

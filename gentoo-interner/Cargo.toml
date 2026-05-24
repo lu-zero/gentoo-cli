@@ -28,9 +28,6 @@ interner = ["dep:papaya", "dep:boxcar", "dep:parking_lot"]
 lasso = ["dep:lasso"]
 symbol-table = ["dep:symbol_table"]
 
-[profile.release]
-opt-level = 3
-lto = true
 
 [dev-dependencies]
 criterion = "0.5"

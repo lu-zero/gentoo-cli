@@ -25,6 +25,3 @@ lasso = ["gentoo-interner/lasso"]
 symbol-table = ["gentoo-interner/symbol-table"]
 serde = ["dep:serde", "gentoo-interner/serde"]
 
-[profile.release]
-opt-level = 3
-lto = true
