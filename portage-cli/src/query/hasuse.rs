@@ -17,15 +17,14 @@ pub fn run(repo_path: &Path, flags: &[String]) -> Result<()> {
             if seen.contains(&cpn) {
                 continue;
             }
-            if let Ok(Some(entry)) = repo.cache_entry(cpv) {
-                if entry
+            if let Ok(Some(entry)) = repo.cache_entry(cpv)
+                && entry
                     .metadata
                     .iuse
                     .iter()
                     .any(|u| u.name() == flag.as_str())
-                {
-                    seen.insert(cpn);
-                }
+            {
+                seen.insert(cpn);
             }
         }
 

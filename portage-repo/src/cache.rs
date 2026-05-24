@@ -86,11 +86,11 @@ pub async fn regen_cache(
                     errors.fetch_add(1, Ordering::Relaxed);
                 }
                 Ok(sourced) => {
-                    if let Some(ref dir) = out_dir {
-                        if let Err(e) = write_entry(&ebuild, sourced, dir, &checksum_cache) {
-                            eprintln!("\nWRITE ERROR {}: {e}", ebuild.cpv());
-                            errors.fetch_add(1, Ordering::Relaxed);
-                        }
+                    if let Some(ref dir) = out_dir
+                        && let Err(e) = write_entry(&ebuild, sourced, dir, &checksum_cache)
+                    {
+                        eprintln!("\nWRITE ERROR {}: {e}", ebuild.cpv());
+                        errors.fetch_add(1, Ordering::Relaxed);
                     }
                 }
             }

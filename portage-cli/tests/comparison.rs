@@ -31,28 +31,15 @@ fn strip_version(atom: &str) -> &str {
     };
     let _cat = &atom[..slash];
     let pf = &atom[slash + 1..];
-    // Find last hyphen before a digit (PMS version boundary)
-    let ver_start = pf
-        .rmatch_indices('-')
-        .find_map(|(i, _)| {
-            pf.get(i + 1..)
-                .and_then(|s| s.chars().next())
-                .map(|c| (i, c))
-        })
-        .filter(|(_, c)| c.is_ascii_digit())
-        .map(|(i, _)| i);
+    // Find the rightmost hyphen where what follows starts with a digit (PMS version boundary).
+    let ver_start = pf.rmatch_indices('-').find_map(|(i, _)| {
+        let next_char = pf.get(i + 1..)?.chars().next()?;
+        next_char.is_ascii_digit().then_some(i)
+    });
     match ver_start {
         Some(pos) => &atom[..slash + 1 + pos],
         None => atom,
     }
-}
-
-/// Sort and deduplicate lines for comparison.
-fn normalize(s: &str) -> Vec<String> {
-    let mut lines: Vec<String> = s.lines().map(|l| l.to_string()).collect();
-    lines.sort();
-    lines.dedup();
-    lines
 }
 
 #[test]
@@ -82,24 +69,32 @@ fn query_files_matches_qlist() {
 
     for atom in atoms {
         let em_out = em(&format!("query files {}", atom));
-        let q_out = q(&format!("qlist {}", atom));
+        let q_out = q(&format!("qlist -e {}", atom));
 
         // em prepends "category/pkg-version\t", strip it
         let em_clean: Vec<String> = em_out
             .lines()
             .filter_map(|l| l.split('\t').nth(1).map(|s| s.to_string()))
+            // qlist suppresses debug files by default, skip them for comparison
+            .filter(|p| !p.starts_with("/usr/lib/debug/"))
             .collect();
 
         let q_lines: Vec<String> = q_out.lines().map(|s| s.to_string()).collect();
 
-        // qlist may include files from bash-completion if it matches "bash"
-        // when using unqualified name. With category-qualified name it should be exact.
         assert_eq!(
             em_clean.len(),
             q_lines.len(),
-            "file count mismatch for {atom}: em={} q={}",
+            "file count mismatch for {atom}: em={} q={}\nextra: {:?}\nmissing: {:?}",
             em_clean.len(),
-            q_lines.len()
+            q_lines.len(),
+            em_clean
+                .iter()
+                .filter(|p| !q_lines.contains(p))
+                .collect::<Vec<_>>(),
+            q_lines
+                .iter()
+                .filter(|p| !em_clean.contains(p))
+                .collect::<Vec<_>>(),
         );
     }
 }

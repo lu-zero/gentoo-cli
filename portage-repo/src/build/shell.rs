@@ -1046,10 +1046,10 @@ impl EbuildShell {
     ///
     /// # Arguments
     /// * `ebuild`    – the ebuild to source
-    /// * `phase`     – portage phase name (`"compile"`, `"install"`, …) or raw
-    ///                 function name (`"src_compile"`)
+    /// * `phase` – portage phase name (`"compile"`, `"install"`, …) or
+    ///   function name (`"src_compile"`)
     /// * `work_root` – root for build dirs; `work/`, `temp/`, `image/` are
-    ///                 created beneath it
+    ///   created beneath it
     pub async fn run_phase(
         &mut self,
         ebuild: &Ebuild,
@@ -1427,9 +1427,9 @@ impl EbuildShell {
                     return None;
                 }
                 // Normalize embedded newlines/tabs to spaces (heredoc values).
-                let normalized = if var == "DESCRIPTION" {
-                    std::borrow::Cow::Owned(itertools::join(value.split_whitespace(), " "))
-                } else if value.bytes().any(|b| matches!(b, b'\n' | b'\r' | b'\t')) {
+                let normalized = if var == "DESCRIPTION"
+                    || value.bytes().any(|b| matches!(b, b'\n' | b'\r' | b'\t'))
+                {
                     std::borrow::Cow::Owned(itertools::join(value.split_whitespace(), " "))
                 } else {
                     value

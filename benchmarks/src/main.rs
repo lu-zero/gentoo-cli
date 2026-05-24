@@ -230,9 +230,7 @@ mod pubgrub_solver {
         ] {
             use_config.enable(Interned::intern(flag));
         }
-        for flag in &["pthread"] {
-            use_config.disable(Interned::intern(flag));
-        }
+        use_config.disable(Interned::intern("pthread"));
         let mut provider = PortageDependencyProvider::new(adapter, use_config, &[]);
 
         let mut root_deps = Vec::new();

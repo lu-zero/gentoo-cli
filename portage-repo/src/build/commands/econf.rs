@@ -169,7 +169,7 @@ fn contains_flag(text: &str, flag: &str) -> bool {
         if after
             .chars()
             .next()
-            .map_or(true, |c| !c.is_ascii_alphanumeric() && !"+_.-".contains(c))
+            .is_none_or(|c| !c.is_ascii_alphanumeric() && !"+_.-".contains(c))
         {
             return true;
         }

@@ -13,11 +13,11 @@ pub fn query_belongs(vdb: &Vdb, files: &[String]) -> Result<()> {
             continue;
         }
         let resolved = resolve_path(file_str);
-        if resolved != path {
-            if let Some(pkg) = vdb.owner(&resolved) {
-                println!("{}", pkg);
-                continue;
-            }
+        if resolved != path
+            && let Some(pkg) = vdb.owner(&resolved)
+        {
+            println!("{}", pkg);
+            continue;
         }
         eprintln!("no package owns '{}'", file_str);
     }
