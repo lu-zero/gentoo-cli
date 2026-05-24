@@ -36,6 +36,7 @@ portage-atom = "0.9"
 portage-atom-pubgrub = "0.4"
 portage-metadata = "0.7"
 portage-repo = { path = "../portage-repo" }
+portage-vdb = { path = "../portage-vdb" }
 clap = { version = "4", features = ["derive"] }
 itertools = "0.14"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

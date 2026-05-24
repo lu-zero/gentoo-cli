@@ -4,6 +4,7 @@ mod error;
 mod query;
 mod regen;
 mod search;
+mod vdb;
 
 #[cfg(feature = "mimalloc")]
 #[global_allocator]
@@ -110,18 +111,16 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
         Applet::News { command } => run_news(command),
         Applet::Glsa { command } => run_glsa(command),
         Applet::File { paths } => {
-            eprintln!("file: paths={:?}", paths);
-            Err(error::Error::NotImplemented("file".into()))
+            let vdb = open_vdb(globals)?;
+            vdb::file(&vdb, paths)
         }
         Applet::List { atoms } => {
-            let parsed = parse_atoms(atoms);
-            eprintln!("list: atoms={:?}", parsed);
-            Err(error::Error::NotImplemented("list".into()))
+            let vdb = open_vdb(globals)?;
+            vdb::list(&vdb, atoms)
         }
         Applet::Size { atoms } => {
-            let parsed = parse_atoms(atoms);
-            eprintln!("size: atoms={:?}", parsed);
-            Err(error::Error::NotImplemented("size".into()))
+            let vdb = open_vdb(globals)?;
+            vdb::size(&vdb, atoms)
         }
         Applet::Check { atoms } => {
             let parsed = parse_atoms(atoms);
@@ -201,8 +200,8 @@ fn run_maint(command: &Option<MaintCommand>) -> Result<()> {
 fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
     match command {
         QueryCommand::Belongs { file } => {
-            eprintln!("equery belongs: {:?}", file);
-            Err(error::Error::NotImplemented("equery belongs".into()))
+            let vdb = open_vdb(globals)?;
+            vdb::query_belongs(&vdb, file)
         }
         QueryCommand::Check { atom } => {
             let parsed = parse_atoms(atom);
@@ -228,9 +227,8 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             depgraph::depgraph(&repo_path, &atoms, &globals.arch, None)
         }
         QueryCommand::Files { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery files: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery files".into()))
+            let vdb = open_vdb(globals)?;
+            vdb::query_files(&vdb, atom)
         }
         QueryCommand::Has { atom } => {
             let parsed = parse_atoms(atom);
@@ -252,9 +250,8 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             Err(error::Error::NotImplemented("equery meta".into()))
         }
         QueryCommand::Size { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery size: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery size".into()))
+            let vdb = open_vdb(globals)?;
+            vdb::query_size(&vdb, atom)
         }
         QueryCommand::Uses { atom } => {
             query::uses::run(&std::path::PathBuf::from(globals.repo_path()), atom)
@@ -314,6 +311,16 @@ fn run_log(command: &Option<LogCommand>) -> Result<()> {
             Err(error::Error::NotImplemented("log time".into()))
         }
     }
+}
+
+fn open_vdb(globals: &cli::Cli) -> Result<portage_vdb::Vdb> {
+    let vdb_path = globals
+        .root
+        .as_deref()
+        .map(|r| format!("{}/var/db/pkg", r.trim_end_matches('/')))
+        .unwrap_or_else(|| "/var/db/pkg".to_string());
+    portage_vdb::Vdb::open(std::path::Path::new(&vdb_path))
+        .map_err(|e| error::Error::Other(format!("failed to open VDB at {}: {}", vdb_path, e)))
 }
 
 fn run_atom(atoms: &[String]) -> Result<()> {
