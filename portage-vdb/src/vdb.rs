@@ -120,13 +120,20 @@ impl Vdb {
     }
 
     /// Total number of installed packages.
+    ///
+    /// Counts package directories without parsing metadata.
     pub fn len(&self) -> usize {
-        self.packages().count()
+        self.category_dirs()
+            .iter()
+            .map(|cat_dir| std::fs::read_dir(cat_dir).map(|rd| rd.count()).unwrap_or(0))
+            .sum()
     }
 
     /// Whether the VDB is empty.
     pub fn is_empty(&self) -> bool {
-        self.packages().next().is_none()
+        self.category_dirs()
+            .iter()
+            .all(|cat_dir| std::fs::read_dir(cat_dir).map_or(0, |rd| rd.count()) == 0)
     }
 
     // -- internal helpers --

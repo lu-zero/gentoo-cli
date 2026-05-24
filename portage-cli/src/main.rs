@@ -216,11 +216,11 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
                 ));
             }
             let resolved = globals.repo_path();
-            let repo_path = std::path::PathBuf::from(&resolved);
+            let repo_path = std::path::Path::new(&resolved);
             if !repo_path.is_dir() {
                 return Err(error::Error::Other(format!("repo not found at {resolved}")));
             }
-            depgraph::depgraph(&repo_path, &atoms, &globals.arch, None)
+            depgraph::depgraph(repo_path, &atoms, &globals.arch, None)
         }
         QueryCommand::Files { atom } => {
             let vdb = open_vdb(globals)?;

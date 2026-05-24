@@ -1,5 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::Path;
 
 use gentoo_core::Arch;
 use portage_atom::interner::{DefaultInterner, Interned};
@@ -164,7 +164,7 @@ fn target_package(data: &RepoData, dep: &Dep) -> PortagePackage {
 }
 
 pub fn depgraph(
-    repo_path: &PathBuf,
+    repo_path: &Path,
     atoms: &[String],
     arch: &Arch,
     use_flags: Option<&HashSet<String>>,
