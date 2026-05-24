@@ -88,8 +88,8 @@ if [[ ! -d "$REPO" ]]; then
     exit 1
 fi
 
-if [[ -z "$CLI_ROOT" || ! -d "$CLI_ROOT/src" ]]; then
-    echo "portage-cli not found at $CLI_ROOT" >&2
+if [[ -z "$CLI_ROOT" || ! -f "$CLI_ROOT/Cargo.toml" ]]; then
+    echo "portage-cli workspace not found at $CLI_ROOT" >&2
     echo "Run: git clone https://github.com/lu-zero/portage-cli ../portage-cli" >&2
     exit 1
 fi

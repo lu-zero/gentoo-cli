@@ -32,8 +32,8 @@ EM="${EM:-}"
 if [[ -z "$EM" ]]; then
     if command -v em >/dev/null 2>&1; then
         EM=$(command -v em)
-    elif [[ -x ../portage-cli/target/release/em ]]; then
-        EM=$(realpath ../portage-cli/target/release/em)
+    elif [[ -x "$SCRIPT_DIR/../../target/release/em" ]]; then
+        EM=$(realpath "$SCRIPT_DIR/../../target/release/em")
     fi
 fi
 if [[ -z "$EM" || ! -x "$EM" ]]; then

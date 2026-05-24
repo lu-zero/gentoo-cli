@@ -27,7 +27,10 @@ if [[ ${#FEATURES[@]} -gt 0 ]]; then
     FEATURE_FLAGS="--features $(IFS=,; echo "${FEATURES[*]}")"
 fi
 
-REGEN="$SCRIPT_DIR/target/release/examples/regen_only"
+TARGET_DIR=$(cargo metadata --format-version 1 --no-deps --manifest-path "$SCRIPT_DIR/Cargo.toml" 2>/dev/null \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['target_directory'])" 2>/dev/null \
+    || echo "$SCRIPT_DIR/target")
+REGEN="$TARGET_DIR/release/examples/regen_only"
 
 # Build description for build message
 BUILD_DESC=""
