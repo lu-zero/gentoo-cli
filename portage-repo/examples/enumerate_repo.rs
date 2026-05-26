@@ -28,7 +28,7 @@ fn main() {
     println!("Masters: {:?}", repo.layout().masters);
     println!();
 
-    let categories = repo.categories().unwrap_or_default();
+    let categories = repo.categories().collect_vec();
     println!("Categories: {}", categories.len());
 
     let mut total_packages = 0;
@@ -38,11 +38,7 @@ fn main() {
         if !cat.exists() {
             continue;
         }
-        let packages = match cat.packages() {
-            Ok(p) => p,
-            Err(_) => continue,
-        };
-        for pkg in &packages {
+        for pkg in cat.packages() {
             total_packages += 1;
             let ebuilds = match pkg.ebuilds() {
                 Ok(e) => e,

@@ -1,8 +1,12 @@
+use std::sync::Arc;
+
 use camino::{Utf8Path, Utf8PathBuf};
 
 use super::package::Package;
 use super::util;
-use crate::error::Result;
+
+type CategoryFilter = dyn Fn(&Category) -> bool + Send + Sync;
+type PackageFilter = dyn Fn(&Package) -> bool + Send + Sync;
 
 /// A category directory within an ebuild repository.
 ///
@@ -35,35 +39,89 @@ impl Category {
         self.path.is_dir()
     }
 
-    /// List all packages in this category.
-    ///
-    /// Returns package directories sorted by name. Non-directory entries and
-    /// dotfiles are skipped.
-    pub fn packages(&self) -> Result<Vec<Package>> {
+    /// Lazy iterator over all packages in this category.
+    pub fn packages(&self) -> Packages {
+        Packages::new(self.path.clone(), self.name.clone())
+    }
+
+    /// Look up a specific package by name.
+    pub fn package(&self, name: &str) -> Option<Package> {
+        let path = self.path.join(name);
+        if path.is_dir() {
+            Some(Package::new(&self.name, name.to_string(), path))
+        } else {
+            None
+        }
+    }
+}
+
+/// Lazy, composable package discovery within a category directory.
+///
+/// Produced by [`Category::packages`]. Nothing is read until the iterator
+/// is driven. Use `.filter()` to restrict and `.collect_vec()` to materialise.
+pub struct Packages {
+    path: Utf8PathBuf,
+    category: String,
+    filter: Option<Arc<PackageFilter>>,
+}
+
+/// Concrete iterator produced by [`Packages::into_iter`].
+pub struct PackagesIter {
+    entries: std::vec::IntoIter<Package>,
+    filter: Option<Arc<PackageFilter>>,
+}
+
+impl Packages {
+    fn new(path: Utf8PathBuf, category: String) -> Self {
+        Self {
+            path,
+            category,
+            filter: None,
+        }
+    }
+
+    /// Retain only packages matching the predicate.
+    pub fn filter<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&Package) -> bool + Send + Sync + 'static,
+    {
+        self.filter = Some(Arc::new(f));
+        self
+    }
+
+    /// Collect all matching packages into a sorted `Vec`.
+    pub fn collect_vec(self) -> Vec<Package> {
+        self.into_iter().collect()
+    }
+}
+
+impl IntoIterator for Packages {
+    type Item = Package;
+    type IntoIter = PackagesIter;
+
+    fn into_iter(self) -> PackagesIter {
         let entries = match std::fs::read_dir(&self.path) {
             Ok(e) => e,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-            Err(e) => return Err(util::io_err(self.path.as_std_path(), e)),
+            Err(_) => {
+                return PackagesIter {
+                    entries: Vec::new().into_iter(),
+                    filter: self.filter,
+                };
+            }
         };
 
         let mut packages = Vec::new();
         for entry in entries {
-            let entry = entry.map_err(|e| util::io_err(self.path.as_std_path(), e))?;
-            // file_type() reads `d_type` from getdents() on Linux filesystems
-            // that fill it in (ext4/btrfs/xfs/tmpfs), avoiding a per-entry
-            // stat(). For symlinks we have to follow with metadata() — some
-            // overlays (notably crossdev) symlink their package dirs at the
-            // gentoo originals, so dropping symlinks-to-dirs here would lose
-            // those packages entirely.
+            let Ok(entry) = entry else { continue };
             let ft = match entry.file_type() {
                 Ok(ft) => ft,
                 Err(_) => continue,
             };
+            // Follow symlinks — some overlays (notably crossdev) symlink
+            // their package dirs at the gentoo originals.
             let is_dir = if ft.is_dir() {
                 true
             } else if ft.is_symlink() {
-                // DirEntry::metadata is lstat — won't follow. Use the free
-                // fs::metadata (stat) so we see whether the target is a dir.
                 std::fs::metadata(entry.path())
                     .map(|m| m.is_dir())
                     .unwrap_or(false)
@@ -78,23 +136,100 @@ impl Category {
             if name.starts_with('.') || name == "CVS" {
                 continue;
             }
-            let path: Utf8PathBuf = match entry.path().try_into() {
-                Ok(p) => p,
-                Err(_) => continue,
-            };
-            packages.push(Package::new(&self.name, name.into_owned(), path));
+            let Ok(path) = entry.path().try_into() else { continue };
+            packages.push(Package::new(&self.category, name.into_owned(), path));
         }
         packages.sort_by(|a, b| a.name().cmp(b.name()));
-        Ok(packages)
+        PackagesIter {
+            entries: packages.into_iter(),
+            filter: self.filter,
+        }
+    }
+}
+
+impl Iterator for PackagesIter {
+    type Item = Package;
+
+    fn next(&mut self) -> Option<Package> {
+        loop {
+            let pkg = self.entries.next()?;
+            match &self.filter {
+                Some(f) if !f(&pkg) => continue,
+                _ => return Some(pkg),
+            }
+        }
+    }
+}
+
+// --- Categories ---
+
+/// Lazy, composable category discovery over an ebuild repository.
+///
+/// Produced by [`Repository::categories`](crate::Repository::categories).
+/// Nothing is read until the iterator is driven.
+pub struct Categories {
+    file: Utf8PathBuf,
+    repo: Utf8PathBuf,
+    filter: Option<Arc<CategoryFilter>>,
+}
+
+/// Concrete iterator produced by [`Categories::into_iter`].
+pub struct CategoriesIter {
+    lines: std::vec::IntoIter<String>,
+    repo: Utf8PathBuf,
+    filter: Option<Arc<CategoryFilter>>,
+}
+
+impl Categories {
+    pub(crate) fn new(file: Utf8PathBuf, repo: Utf8PathBuf) -> Self {
+        Self {
+            file,
+            repo,
+            filter: None,
+        }
     }
 
-    /// Look up a specific package by name.
-    pub fn package(&self, name: &str) -> Option<Package> {
-        let path = self.path.join(name);
-        if path.is_dir() {
-            Some(Package::new(&self.name, name.to_string(), path))
-        } else {
-            None
+    /// Retain only categories matching the predicate.
+    pub fn filter<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&Category) -> bool + Send + Sync + 'static,
+    {
+        self.filter = Some(Arc::new(f));
+        self
+    }
+
+    /// Collect all matching categories into a `Vec`.
+    pub fn collect_vec(self) -> Vec<Category> {
+        self.into_iter().collect()
+    }
+}
+
+impl IntoIterator for Categories {
+    type Item = Category;
+    type IntoIter = CategoriesIter;
+
+    fn into_iter(self) -> CategoriesIter {
+        let lines = util::read_lines(&self.file).unwrap_or_default();
+        CategoriesIter {
+            lines: lines.into_iter(),
+            repo: self.repo,
+            filter: self.filter,
+        }
+    }
+}
+
+impl Iterator for CategoriesIter {
+    type Item = Category;
+
+    fn next(&mut self) -> Option<Category> {
+        loop {
+            let name = self.lines.next()?;
+            let path = self.repo.join(&name);
+            let cat = Category::new(name, path);
+            match &self.filter {
+                Some(f) if !f(&cat) => continue,
+                _ => return Some(cat),
+            }
         }
     }
 }
@@ -122,7 +257,7 @@ mod tests {
         std::fs::write(cat_dir.join("README"), "not a package").unwrap();
 
         let cat = Category::new("dev-util".into(), cat_dir.try_into().unwrap());
-        let pkgs = cat.packages().unwrap();
+        let pkgs = cat.packages().collect_vec();
         let names: Vec<&str> = pkgs.iter().map(|p| p.name()).collect();
         assert_eq!(names, vec!["bar", "foo"]);
     }
@@ -135,7 +270,7 @@ mod tests {
         std::fs::create_dir_all(cat_dir.join(".hidden")).unwrap();
 
         let cat = Category::new("dev-util".into(), cat_dir.try_into().unwrap());
-        let pkgs = cat.packages().unwrap();
+        let pkgs = cat.packages().collect_vec();
         let names: Vec<&str> = pkgs.iter().map(|p| p.name()).collect();
         assert_eq!(names, vec!["foo"]);
     }
@@ -165,5 +300,18 @@ mod tests {
             tmp.path().join("no-such-dir").try_into().unwrap(),
         );
         assert!(!cat2.exists());
+    }
+
+    #[test]
+    fn packages_filter() {
+        let tmp = setup_repo();
+        let cat_dir = tmp.path().join("dev-util");
+        std::fs::create_dir_all(cat_dir.join("foo")).unwrap();
+        std::fs::create_dir_all(cat_dir.join("bar")).unwrap();
+
+        let cat = Category::new("dev-util".into(), cat_dir.try_into().unwrap());
+        let pkgs = cat.packages().filter(|p| p.name() == "foo").collect_vec();
+        assert_eq!(pkgs.len(), 1);
+        assert_eq!(pkgs[0].name(), "foo");
     }
 }

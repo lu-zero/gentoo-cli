@@ -14,8 +14,8 @@
 //! let repo = Repository::open("/var/db/repos/gentoo").unwrap();
 //! println!("repo: {} (masters: {:?})", repo.name(), repo.layout().masters);
 //!
-//! for cat in repo.categories().unwrap() {
-//!     for pkg in cat.packages().unwrap() {
+//! for cat in repo.categories() {
+//!     for pkg in cat.packages() {
 //!         for ebuild in pkg.ebuilds().unwrap() {
 //!             println!("{}", ebuild.cpv());
 //!         }
@@ -52,7 +52,7 @@ pub use gentoo_core::arch::ExoticKey;
 pub use gentoo_core::{Arch, KnownArch, arch};
 pub use portage_metadata::EbuildMetadata;
 pub use portage_metadata::interner::{DefaultInterner, GlobalInterner, Interner, NoInterner};
-pub use repo::Category;
+pub use repo::{Categories, CategoriesIter, Category, Packages, PackagesIter};
 pub use repo::Ebuild;
 pub use repo::LayoutConf;
 pub use repo::Package;

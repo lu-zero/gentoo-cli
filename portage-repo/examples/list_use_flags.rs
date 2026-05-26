@@ -81,16 +81,12 @@ fn main() {
     let mut pkg_flags: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     let mut xml_errors = 0usize;
 
-    let categories = repo.categories().unwrap_or_default();
+    let categories = repo.categories().collect_vec();
     for cat in &categories {
         if !cat.exists() {
             continue;
         }
-        let packages = match cat.packages() {
-            Ok(p) => p,
-            Err(_) => continue,
-        };
-        for pkg in &packages {
+        for pkg in cat.packages() {
             if !pkg.has_metadata_xml() {
                 continue;
             }

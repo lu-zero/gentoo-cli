@@ -9,6 +9,7 @@ use jwalk::WalkDir;
 use portage_atom::{Cpn, Cpv, Dep};
 use portage_metadata::{CacheEntry, Eapi};
 
+use super::category::Categories;
 use super::ebuild::Ebuild;
 
 type EbuildFilter = dyn Fn(&Ebuild) -> bool + Send + Sync;
@@ -266,18 +267,17 @@ impl Repository {
         &self.layout
     }
 
-    /// List all categories declared in `profiles/categories`.
+    /// Lazy iterator over all categories declared in `profiles/categories`.
+    ///
+    /// Returns a [`Categories`] builder; nothing is read until the iterator
+    /// is driven. Use `.filter()` to restrict and `.collect_vec()` to materialise.
     ///
     /// See [PMS 4](https://projects.gentoo.org/pms/9/pms.html#tree-layout).
-    pub fn categories(&self) -> Result<Vec<Category>> {
-        let lines = util::read_lines(self.path.join("profiles").join("categories"))?;
-        Ok(lines
-            .into_iter()
-            .map(|name| {
-                let cat_path = self.path.join(&name);
-                Category::new(name, cat_path)
-            })
-            .collect())
+    pub fn categories(&self) -> Categories {
+        Categories::new(
+            self.path.join("profiles").join("categories"),
+            self.path.clone(),
+        )
     }
 
     /// List all ebuilds in the repository using parallel directory walking.
