@@ -1,4 +1,4 @@
-use std::path::Path;
+use camino::{Utf8Path, Utf8PathBuf};
 
 use portage_vdb::Vdb;
 
@@ -7,13 +7,13 @@ use crate::error::{Error, Result};
 /// `em query belongs <file>...` — find which package owns a file.
 pub fn query_belongs(vdb: &Vdb, files: &[String]) -> Result<()> {
     for file_str in files {
-        let path = Path::new(file_str);
+        let path = Utf8Path::new(file_str);
         if let Some(pkg) = vdb.owner(path) {
             println!("{}", pkg);
             continue;
         }
         let resolved = resolve_path(file_str);
-        if resolved != path
+        if resolved.as_path() != path
             && let Some(pkg) = vdb.owner(&resolved)
         {
             println!("{}", pkg);
@@ -37,7 +37,7 @@ pub fn query_files(vdb: &Vdb, atoms: &[String]) -> Result<()> {
                 Ok(entries) => {
                     for entry in entries {
                         if !matches!(entry.kind, portage_vdb::ContentsKind::Dir) {
-                            println!("{}\t{}", pkg, entry.path.display());
+                            println!("{}\t{}", pkg, entry.path);
                         }
                     }
                 }
@@ -75,37 +75,33 @@ fn print_pkg_size(pkg: &portage_vdb::InstalledPackage) -> Result<()> {
     Ok(())
 }
 
-/// Find installed packages matching an atom pattern.
-///
-/// Supports:
-/// - `category/package-version` (exact match)
-/// - `category/package` (all versions)
-/// - `package` (all versions across all categories)
 fn find_packages(vdb: &Vdb, pattern: &str) -> Vec<portage_vdb::InstalledPackage> {
-    if let Some(slash_pos) = pattern.find('/') {
-        let cat = &pattern[..slash_pos];
-        let rest = &pattern[slash_pos + 1..];
-
-        // Try exact category/pf match first
-        if let Some(pkg) = vdb.find(cat, rest) {
+    if let Some(slash) = pattern.find('/') {
+        let cat_name = &pattern[..slash];
+        let rest = &pattern[slash + 1..];
+        let Some(cat) = vdb.category(cat_name) else {
+            return vec![];
+        };
+        if let Some(pkg) = cat.package(rest) {
             return vec![pkg];
         }
-
-        // category/package — find all versions
-        vdb.find_by_cpn(cat, rest)
+        let rest = rest.to_string();
+        cat.packages()
+            .filter(move |p| p.cpn().package.as_ref() == rest)
+            .collect_vec()
     } else {
-        // No category — search all packages by name
         vdb.packages()
-            .filter(|pkg| pkg.cpn().package.as_ref() == pattern || pkg.pf() == pattern)
+            .into_iter()
+            .filter(|p| p.cpn().package.as_ref() == pattern || p.pf() == pattern)
             .collect()
     }
 }
 
-fn resolve_path(path_str: &str) -> std::path::PathBuf {
-    let path = Path::new(path_str);
-    match std::fs::canonicalize(path) {
-        Ok(resolved) => resolved,
-        Err(_) => path.to_path_buf(),
+fn resolve_path(path_str: &str) -> Utf8PathBuf {
+    match std::fs::canonicalize(path_str) {
+        Ok(resolved) => Utf8PathBuf::from_path_buf(resolved)
+            .unwrap_or_else(|_| Utf8PathBuf::from(path_str)),
+        Err(_) => Utf8PathBuf::from(path_str),
     }
 }
 

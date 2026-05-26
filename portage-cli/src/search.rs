@@ -72,19 +72,8 @@ fn run_name(
     // value: (cpn, repo_index_of_first_sighting)
     let mut matched: BTreeMap<String, (Cpn, usize)> = BTreeMap::new();
     for (idx, repo) in repos.iter().enumerate() {
-        let cats = match repo.categories() {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("em: skipping {} categories: {e}", repo.path());
-                continue;
-            }
-        };
-        for cat in cats {
-            let pkgs = match cat.packages() {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
-            for pkg in pkgs {
+        for cat in repo.categories() {
+            for pkg in cat.packages() {
                 let hit = if all {
                     true
                 } else if pat_has_slash {

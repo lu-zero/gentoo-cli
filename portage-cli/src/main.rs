@@ -321,7 +321,7 @@ fn open_vdb(globals: &cli::Cli) -> Result<portage_vdb::Vdb> {
                 .map(|r| format!("{}/var/db/pkg", r.trim_end_matches('/')))
                 .unwrap_or_else(|| "/var/db/pkg".to_string())
         });
-    portage_vdb::Vdb::open(std::path::Path::new(&vdb_path))
+    portage_vdb::Vdb::open(vdb_path.as_str())
         .map_err(|e| error::Error::Other(format!("failed to open VDB at {}: {}", vdb_path, e)))
 }
 

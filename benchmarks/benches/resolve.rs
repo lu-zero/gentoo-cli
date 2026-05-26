@@ -277,8 +277,8 @@ fn load_repo(repo_path: &str, sys: &SystemConfig) -> InMemoryRepository {
     let repo_name = Interned::intern(repo.name());
     let mut out = InMemoryRepository::new();
 
-    for cat in repo.categories().expect("failed to read categories") {
-        for pkg in cat.packages().expect("failed to read packages") {
+    for cat in repo.categories() {
+        for pkg in cat.packages() {
             for ebuild in pkg.ebuilds().expect("failed to read ebuilds") {
                 let cpv = ebuild.cpv().clone();
                 let Ok(Some(cache)) = repo.cache_entry(&cpv) else {

@@ -3,8 +3,9 @@
 //! These tests only run on a live Gentoo system with `portage-utils` installed.
 //! They are ignored by default; run with `cargo test -- --ignored`.
 
-use std::path::Path;
 use std::process::Command;
+
+use camino::Utf8Path;
 
 fn em(args: &str) -> String {
     let output = Command::new("cargo")
@@ -103,8 +104,8 @@ fn query_files_matches_qlist() {
 #[ignore]
 fn installed_count_matches_qlist() {
     let q_count = q("qlist -I").lines().count();
-    let vdb = portage_vdb::Vdb::open(Path::new("/var/db/pkg")).unwrap();
-    let em_count = vdb.packages().count();
+    let vdb = portage_vdb::Vdb::open(Utf8Path::new("/var/db/pkg")).unwrap();
+    let em_count = vdb.packages().into_iter().count();
 
     assert_eq!(
         em_count, q_count,
@@ -115,10 +116,10 @@ fn installed_count_matches_qlist() {
 #[test]
 #[ignore]
 fn vdb_pkg_size_matches() {
-    let vdb = portage_vdb::Vdb::open(Path::new("/var/db/pkg")).unwrap();
+    let vdb = portage_vdb::Vdb::open(Utf8Path::new("/var/db/pkg")).unwrap();
 
     // Pick a known package
-    if let Some(pkg) = vdb.find("app-shells", "bash-5.3_p9-r2") {
+    if let Some(pkg) = vdb.category("app-shells").and_then(|c| c.package("bash-5.3_p9-r2")) {
         let size = pkg.size().unwrap();
         // bash is typically ~8-12 MiB
         assert!(size.is_some());
@@ -131,9 +132,9 @@ fn vdb_pkg_size_matches() {
 #[test]
 #[ignore]
 fn vdb_contents_roundtrip() {
-    let vdb = portage_vdb::Vdb::open(Path::new("/var/db/pkg")).unwrap();
+    let vdb = portage_vdb::Vdb::open(Utf8Path::new("/var/db/pkg")).unwrap();
 
-    if let Some(pkg) = vdb.find("app-shells", "bash-5.3_p9-r2") {
+    if let Some(pkg) = vdb.category("app-shells").and_then(|c| c.package("bash-5.3_p9-r2")) {
         let entries = pkg.contents().unwrap();
         assert!(!entries.is_empty());
 
