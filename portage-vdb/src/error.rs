@@ -1,3 +1,4 @@
+use camino::Utf8PathBuf;
 use thiserror::Error;
 
 /// Errors that can occur when reading the VDB.
@@ -5,26 +6,16 @@ use thiserror::Error;
 pub enum Error {
     /// The VDB root directory does not exist or is not a directory.
     #[error("VDB root not found: {0}")]
-    RootNotFound(std::path::PathBuf),
+    RootNotFound(Utf8PathBuf),
 
     /// A package directory is malformed (e.g. missing required files).
     #[error("malformed package directory {path}: {reason}")]
-    MalformedPackage {
-        path: std::path::PathBuf,
-        reason: String,
-    },
+    MalformedPackage { path: Utf8PathBuf, reason: String },
 
     /// An I/O error occurred reading a VDB file.
     #[error("I/O error reading {path}: {source}")]
     Io {
-        path: std::path::PathBuf,
+        path: Utf8PathBuf,
         source: std::io::Error,
-    },
-
-    /// Failed to parse an atom (Cpn/Cpv) from a package directory name.
-    #[error("failed to parse atom from {name}: {source}")]
-    AtomParse {
-        name: String,
-        source: portage_atom::Error,
     },
 }

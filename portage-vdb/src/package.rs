@@ -1,8 +1,7 @@
 //! Installed package representation.
 
-use std::path::{Path, PathBuf};
-
-use portage_atom::{Cpv, DepEntry};
+use camino::{Utf8Path, Utf8PathBuf};
+use portage_atom::{Cpv, DepEntry, Pf};
 use portage_metadata::Eapi;
 
 use crate::Result;
@@ -15,35 +14,36 @@ use crate::error::Error;
 /// Fields are read lazily from the filesystem on first access.
 #[derive(Debug)]
 pub struct InstalledPackage {
-    path: PathBuf,
-    category: String,
+    path: Utf8PathBuf,
     cpv: Cpv,
 }
 
 impl InstalledPackage {
-    pub(crate) fn from_dir(path: &Path, category: &str, cpv: Cpv) -> Self {
+    pub(crate) fn from_dir(path: &Utf8Path, cpv: Cpv) -> Self {
         Self {
             path: path.to_path_buf(),
-            category: category.to_string(),
             cpv,
         }
     }
 
     /// The directory path in the VDB (`/var/db/pkg/$CATEGORY/$PF`).
-    pub fn path(&self) -> &Path {
+    pub fn path(&self) -> &Utf8Path {
         &self.path
     }
 
     /// The category name (e.g. `app-shells`).
     pub fn category(&self) -> &str {
-        &self.category
+        self.cpv.cpn.category.as_ref()
     }
 
     /// The package name-version without category (e.g. `bash-5.3_p9-r2`).
     ///
-    /// This is the PF format used in VDB directory names.
-    pub fn pf(&self) -> String {
-        format!("{}-{}", self.cpv.cpn.package, self.cpv.version)
+    /// This is the `PF` format used for VDB directory names (PMS §11.1).
+    pub fn pf(&self) -> Pf {
+        Pf {
+            package: self.cpv.cpn.package,
+            version: self.cpv.version.clone(),
+        }
     }
 
     /// The parsed Cpn (category + package name).
@@ -58,7 +58,6 @@ impl InstalledPackage {
 
     // -- Metadata fields (read from individual files) --
 
-    /// Read a single metadata file as a trimmed String.
     fn read_field(&self, name: &str) -> Result<String> {
         let p = self.path.join(name);
         std::fs::read_to_string(&p)
@@ -66,16 +65,12 @@ impl InstalledPackage {
             .map_err(|source| Error::Io { path: p, source })
     }
 
-    /// Read a single metadata file, returning `None` if it doesn't exist.
     fn read_field_opt(&self, name: &str) -> Result<Option<String>> {
         let p = self.path.join(name);
         match std::fs::read_to_string(&p) {
             Ok(s) => Ok(Some(s.trim().to_string())),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(source) => Err(Error::Io {
-                path: self.path.join(name),
-                source,
-            }),
+            Err(source) => Err(Error::Io { path: p, source }),
         }
     }
 
@@ -93,9 +88,24 @@ impl InstalledPackage {
         })
     }
 
-    /// The slot (may include subslot, e.g. `0/5.1`).
+    /// The full SLOT value (may include subslot, e.g. `0/5.1`).
     pub fn slot(&self) -> Result<String> {
         self.read_field("SLOT")
+    }
+
+    /// The main slot only (the part before `/`, e.g. `0` from `0/5.1`).
+    pub fn slot_main(&self) -> Result<String> {
+        let raw = self.slot()?;
+        Ok(raw
+            .split_once('/')
+            .map(|(s, _)| s.to_string())
+            .unwrap_or(raw))
+    }
+
+    /// The subslot if present (the part after `/`, e.g. `5.1` from `0/5.1`).
+    pub fn subslot(&self) -> Result<Option<String>> {
+        let raw = self.slot()?;
+        Ok(raw.split_once('/').map(|(_, sub)| sub.to_string()))
     }
 
     /// The repository name this package was installed from.
@@ -151,9 +161,9 @@ impl InstalledPackage {
             .transpose()
     }
 
-    /// Keywords (space-separated).
+    /// Keywords (space-separated). Returns an empty vec if the KEYWORDS file is absent.
     pub fn keywords(&self) -> Result<Vec<String>> {
-        let raw = self.read_field("KEYWORDS")?;
+        let raw = self.read_field_opt("KEYWORDS")?.unwrap_or_default();
         Ok(raw.split_whitespace().map(|s| s.to_string()).collect())
     }
 
@@ -215,10 +225,8 @@ impl InstalledPackage {
         Ok(ContentsEntry::parse(&raw))
     }
 
-    /// Find which installed package owns a given file path.
-    ///
     /// Returns `true` if this package owns the given path.
-    pub fn owns(&self, file_path: &Path) -> Result<bool> {
+    pub fn owns(&self, file_path: &Utf8Path) -> Result<bool> {
         let entries = self.contents()?;
         Ok(entries.iter().any(|e| {
             matches!(e.kind, crate::ContentsKind::Obj | crate::ContentsKind::Sym)
@@ -229,7 +237,7 @@ impl InstalledPackage {
 
 impl std::fmt::Display for InstalledPackage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/{}", self.category, self.pf())
+        write!(f, "{}", self.cpv)
     }
 }
 
@@ -243,13 +251,13 @@ mod tests {
         category: &str,
         pf: &str,
         fields: &[(&str, &str)],
-    ) -> PathBuf {
+    ) -> Utf8PathBuf {
         let pkg_dir = dir.join(category).join(pf);
         fs::create_dir_all(&pkg_dir).unwrap();
         for (name, content) in fields {
             fs::write(pkg_dir.join(name), content).unwrap();
         }
-        pkg_dir
+        pkg_dir.try_into().unwrap()
     }
 
     #[test]
@@ -269,7 +277,7 @@ mod tests {
             ("repository", "gentoo"),
         ];
         let pkg_dir = make_fake_pkg(tmp.path(), "app-shells", "bash-5.3_p9-r2", &fields);
-        let pkg = InstalledPackage::from_dir(&pkg_dir, "app-shells", cpv);
+        let pkg = InstalledPackage::from_dir(&pkg_dir, cpv);
 
         assert_eq!(pkg.category(), "app-shells");
         assert_eq!(pkg.pf(), "bash-5.3_p9-r2");
@@ -293,11 +301,11 @@ mod tests {
         let contents = "dir /etc\nobj /etc/foo abc123 100\nsym /etc/bar -> baz 200\n";
         let fields = [("CONTENTS", contents)];
         let pkg_dir = make_fake_pkg(tmp.path(), "app-shells", "bash-5.3", &fields);
-        let pkg = InstalledPackage::from_dir(&pkg_dir, "app-shells", cpv);
+        let pkg = InstalledPackage::from_dir(&pkg_dir, cpv);
 
         let entries = pkg.contents().unwrap();
         assert_eq!(entries.len(), 3);
-        assert_eq!(entries[1].path, PathBuf::from("/etc/foo"));
+        assert_eq!(entries[1].path, Utf8PathBuf::from("/etc/foo"));
     }
 
     #[test]
@@ -307,11 +315,10 @@ mod tests {
         let contents = "dir /etc\nobj /etc/foo abc123 100\n";
         let fields = [("CONTENTS", contents)];
         let pkg_dir = make_fake_pkg(tmp.path(), "app-shells", "bash-5.3", &fields);
-        let pkg = InstalledPackage::from_dir(&pkg_dir, "app-shells", cpv);
+        let pkg = InstalledPackage::from_dir(&pkg_dir, cpv);
 
-        assert!(pkg.owns(Path::new("/etc/foo")).unwrap());
-        assert!(!pkg.owns(Path::new("/etc/bar")).unwrap());
-        // dir entries don't count as "owned"
-        assert!(!pkg.owns(Path::new("/etc")).unwrap());
+        assert!(pkg.owns(Utf8Path::new("/etc/foo")).unwrap());
+        assert!(!pkg.owns(Utf8Path::new("/etc/bar")).unwrap());
+        assert!(!pkg.owns(Utf8Path::new("/etc")).unwrap());
     }
 }

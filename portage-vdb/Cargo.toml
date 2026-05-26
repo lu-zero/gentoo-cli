@@ -6,11 +6,13 @@ rust-version = "1.88"
 authors = ["Luca Barbato <lu_zero@gentoo.org>"]
 license = "MIT"
 description = "Gentoo Portage VDB (installed package database) reader"
-repository = "https://github.com/lu-zero/portage-vdb"
+repository = "https://github.com/lu-zero/portage-cli"
+readme = "README.md"
 keywords = ["gentoo", "portage", "vdb", "installed"]
 categories = ["os::unix-apis", "development-tools"]
 
 [dependencies]
+camino = { workspace = true }
 portage-atom = { workspace = true }
 portage-metadata = { workspace = true }
 thiserror = { workspace = true }

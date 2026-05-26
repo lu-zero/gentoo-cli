@@ -9,7 +9,7 @@
 //! dev /path/to/device
 //! ```
 
-use std::path::PathBuf;
+use camino::Utf8PathBuf;
 
 /// Kind of filesystem entry in a CONTENTS file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,13 +32,13 @@ pub struct ContentsEntry {
     /// Kind of entry (obj, dir, sym, fif, dev).
     pub kind: ContentsKind,
     /// Absolute path of the installed file/directory/symlink.
-    pub path: PathBuf,
+    pub path: Utf8PathBuf,
     /// MD5 digest (only for `Obj` entries).
     pub md5: Option<String>,
     /// File size or symlink target mtime as a Unix timestamp.
     pub mtime: Option<u64>,
     /// Symlink target (only for `Sym` entries).
-    pub target: Option<PathBuf>,
+    pub target: Option<Utf8PathBuf>,
 }
 
 impl ContentsEntry {
@@ -64,7 +64,7 @@ impl ContentsEntry {
         };
 
         let path_str = parts.next()?;
-        let path = PathBuf::from(path_str);
+        let path = Utf8PathBuf::from(path_str);
 
         match kind {
             ContentsKind::Obj => {
@@ -79,20 +79,16 @@ impl ContentsEntry {
                 })
             }
             ContentsKind::Sym => {
-                // sym /path -> target mtime
-                // The path field already consumed the first token.
-                // But sym format is: sym /link/path -> /target mtime
-                // We need to re-parse because the target contains spaces
-                // after the '->' separator.
+                // sym /link/path -> /target mtime
                 let rest = line.strip_prefix("sym ")?;
                 let (path_and_target, mtime_str) = rest.rsplit_once(' ')?;
                 let (path_str, target_str) = path_and_target.split_once(" -> ")?;
                 Some(ContentsEntry {
                     kind,
-                    path: PathBuf::from(path_str),
+                    path: Utf8PathBuf::from(path_str),
                     md5: None,
                     mtime: mtime_str.parse().ok(),
-                    target: Some(PathBuf::from(target_str)),
+                    target: Some(Utf8PathBuf::from(target_str)),
                 })
             }
             ContentsKind::Dir | ContentsKind::Fifo | ContentsKind::Dev => Some(ContentsEntry {
@@ -122,7 +118,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(entry.kind, ContentsKind::Obj);
-        assert_eq!(entry.path, PathBuf::from("/etc/skel/.bashrc"));
+        assert_eq!(entry.path, Utf8PathBuf::from("/etc/skel/.bashrc"));
         assert_eq!(
             entry.md5.as_deref(),
             Some("d210b9cd7fc07420736480f2062d7d7f")
@@ -135,15 +131,15 @@ mod tests {
     fn parse_dir() {
         let entry = ContentsEntry::parse_line("dir /etc").unwrap();
         assert_eq!(entry.kind, ContentsKind::Dir);
-        assert_eq!(entry.path, PathBuf::from("/etc"));
+        assert_eq!(entry.path, Utf8PathBuf::from("/etc"));
     }
 
     #[test]
     fn parse_sym() {
         let entry = ContentsEntry::parse_line("sym /bin/rbash -> bash 1778566174").unwrap();
         assert_eq!(entry.kind, ContentsKind::Sym);
-        assert_eq!(entry.path, PathBuf::from("/bin/rbash"));
-        assert_eq!(entry.target.as_deref(), Some(std::path::Path::new("bash")));
+        assert_eq!(entry.path, Utf8PathBuf::from("/bin/rbash"));
+        assert_eq!(entry.target.as_deref(), Some(camino::Utf8Path::new("bash")));
         assert_eq!(entry.mtime, Some(1778566174));
     }
 
@@ -154,7 +150,7 @@ mod tests {
         assert_eq!(entry.kind, ContentsKind::Sym);
         assert_eq!(
             entry.target.as_deref(),
-            Some(std::path::Path::new("libfoo.so.1"))
+            Some(camino::Utf8Path::new("libfoo.so.1"))
         );
     }
 

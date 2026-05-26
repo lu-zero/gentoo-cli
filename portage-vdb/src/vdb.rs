@@ -1,10 +1,11 @@
 //! Top-level VDB reader.
 
-use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use portage_atom::Cpv;
+use camino::{Utf8Path, Utf8PathBuf};
 
 use crate::Result;
+use crate::category::{Categories, CategoriesIter, Category, PackageFilter, PackagesIter};
 use crate::error::Error;
 use crate::package::InstalledPackage;
 
@@ -20,21 +21,23 @@ pub const DEFAULT_VDB_PATH: &str = "/var/db/pkg";
 ///
 /// ```no_run
 /// use portage_vdb::Vdb;
-/// use std::path::Path;
 ///
-/// let vdb = Vdb::open(Path::new("/var/db/pkg")).unwrap();
-/// for pkg in vdb.packages() {
-///     println!("{}", pkg);
+/// let vdb = Vdb::open("/var/db/pkg").unwrap();
+/// for cat in vdb.categories() {
+///     for pkg in cat.packages() {
+///         println!("{}", pkg);
+///     }
 /// }
 /// ```
 #[derive(Debug)]
 pub struct Vdb {
-    root: PathBuf,
+    root: Utf8PathBuf,
 }
 
 impl Vdb {
     /// Open the VDB at the given root path (typically `/var/db/pkg`).
-    pub fn open(path: &Path) -> Result<Self> {
+    pub fn open(path: impl AsRef<Utf8Path>) -> Result<Self> {
+        let path = path.as_ref();
         if path.is_dir() {
             Ok(Self {
                 root: path.to_path_buf(),
@@ -46,145 +49,132 @@ impl Vdb {
 
     /// Open the VDB at the default path (`/var/db/pkg`).
     pub fn open_default() -> Result<Self> {
-        Self::open(Path::new(DEFAULT_VDB_PATH))
+        Self::open(DEFAULT_VDB_PATH)
     }
 
     /// The root path of this VDB.
-    pub fn root(&self) -> &Path {
+    pub fn root(&self) -> &Utf8Path {
         &self.root
     }
 
-    /// Iterate over all installed packages.
-    ///
-    /// Each category directory is scanned for package directories.
-    /// Malformed entries (bad directory names, missing metadata) are skipped.
-    pub fn packages(&self) -> impl Iterator<Item = InstalledPackage> + '_ {
-        let cat_dirs: Vec<PathBuf> = self.category_dirs();
-        cat_dirs.into_iter().flat_map(|cat_dir| {
-            let pkgs: Vec<_> = self.packages_in_category_dir(&cat_dir).collect();
-            pkgs
-        })
+    /// Lazy iterator over all categories in the VDB.
+    pub fn categories(&self) -> Categories {
+        Categories::new(self.root.clone())
     }
 
-    /// List category directory names (e.g. `app-shells`, `sys-libs`).
-    pub fn category_names(&self) -> Vec<String> {
-        let mut names: Vec<String> = self
-            .category_dirs()
-            .iter()
-            .filter_map(|d| {
-                d.file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|s| s.to_string())
-            })
-            .collect();
-        names.sort();
-        names
-    }
-
-    /// Iterate over all installed packages in a specific category.
-    pub fn packages_in_category(&self, name: &str) -> Vec<InstalledPackage> {
-        let cat_dir = self.root.join(name);
-        self.packages_in_category_dir(&cat_dir).collect()
-    }
-
-    /// Find an installed package by category and PF (e.g. `app-shells/bash-5.3_p9-r2`).
-    ///
-    /// Returns the first match, or `None` if not found.
-    pub fn find(&self, category: &str, pf: &str) -> Option<InstalledPackage> {
-        let pkg_dir = self.root.join(category).join(pf);
-        if pkg_dir.is_dir() {
-            let cpv = parse_cpv_from_parts(category, pf)?;
-            Some(InstalledPackage::from_dir(&pkg_dir, category, cpv))
+    /// Look up a single category by name.
+    pub fn category(&self, name: &str) -> Option<Category> {
+        let path = self.root.join(name);
+        if path.is_dir() {
+            Some(Category::new(name.to_string(), path))
         } else {
             None
         }
     }
 
-    /// Find all installed versions of a package by category and package name.
-    ///
-    /// E.g. `find_by_cpn("app-shells", "bash")` returns all installed
-    /// bash versions.
-    pub fn find_by_cpn(&self, category: &str, package: &str) -> Vec<InstalledPackage> {
-        self.packages_in_category(category)
-            .into_iter()
-            .filter(|pkg| pkg.cpn().package.as_ref() == package)
-            .collect()
+    /// Flat lazy iterator over every installed package across all categories.
+    pub fn packages(&self) -> AllPackages {
+        AllPackages::new(self.categories())
     }
 
     /// Find which installed package owns a given file path.
     ///
     /// Scans all packages' CONTENTS files. This is O(n) over installed packages.
-    pub fn owner(&self, file_path: &Path) -> Option<InstalledPackage> {
+    pub fn owner(&self, file_path: &Utf8Path) -> Option<InstalledPackage> {
         self.packages()
+            .into_iter()
             .find(|pkg| pkg.owns(file_path).unwrap_or(false))
     }
 
     /// Total number of installed packages.
-    ///
-    /// Counts package directories without parsing metadata.
     pub fn len(&self) -> usize {
-        self.category_dirs()
-            .iter()
-            .map(|cat_dir| std::fs::read_dir(cat_dir).map(|rd| rd.count()).unwrap_or(0))
+        self.categories()
+            .into_iter()
+            .map(|cat| cat.packages().into_iter().count())
             .sum()
     }
 
-    /// Whether the VDB is empty.
+    /// Whether the VDB contains no installed packages.
     pub fn is_empty(&self) -> bool {
-        self.category_dirs()
-            .iter()
-            .all(|cat_dir| std::fs::read_dir(cat_dir).map_or(0, |rd| rd.count()) == 0)
-    }
-
-    // -- internal helpers --
-
-    fn category_dirs(&self) -> Vec<PathBuf> {
-        std::fs::read_dir(&self.root)
-            .into_iter()
-            .flatten()
-            .filter_map(|e| e.ok())
-            .map(|e| e.path())
-            .filter(|p| p.is_dir())
-            .collect()
-    }
-
-    fn packages_in_category_dir(
-        &self,
-        cat_dir: &Path,
-    ) -> impl Iterator<Item = InstalledPackage> + '_ {
-        let cat_name = cat_dir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("")
-            .to_string();
-
-        let cat_dir = cat_dir.to_path_buf();
-
-        std::fs::read_dir(&cat_dir)
-            .into_iter()
-            .flatten()
-            .filter_map(move |e| {
-                let entry = e.ok()?;
-                let path = entry.path();
-                if !path.is_dir() {
-                    return None;
-                }
-
-                let pf = path.file_name()?.to_str()?;
-                let cpv = parse_cpv_from_parts(&cat_name, pf)?;
-
-                Some(InstalledPackage::from_dir(&path, &cat_name, cpv))
-            })
+        self.packages().into_iter().next().is_none()
     }
 }
 
-/// Parse a Cpv from the VDB category + PF directory name.
+/// Lazy, composable flat iterator over all installed packages in a VDB.
 ///
-/// The VDB stores `category/PF` where PF is `package-version` (no category prefix).
-/// `Cpv::parse` expects `category/package-version`, so we concatenate.
-fn parse_cpv_from_parts(category: &str, pf: &str) -> Option<Cpv> {
-    let full = format!("{category}/{pf}");
-    Cpv::parse(&full).ok()
+/// Produced by [`Vdb::packages`]. Iterates categories in sorted order, then
+/// packages within each category sorted by CPV.
+pub struct AllPackages {
+    categories: Categories,
+    filter: Option<Arc<PackageFilter>>,
+}
+
+/// Concrete iterator produced by [`AllPackages::into_iter`].
+pub struct AllPackagesIter {
+    current: Option<PackagesIter>,
+    remaining: CategoriesIter,
+    filter: Option<Arc<PackageFilter>>,
+}
+
+impl AllPackages {
+    fn new(categories: Categories) -> Self {
+        Self {
+            categories,
+            filter: None,
+        }
+    }
+
+    /// Retain only packages matching the predicate.
+    pub fn filter<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&InstalledPackage) -> bool + Send + Sync + 'static,
+    {
+        self.filter = Some(Arc::new(f));
+        self
+    }
+
+    /// Collect all matching packages into a `Vec`.
+    pub fn collect_vec(self) -> Vec<InstalledPackage> {
+        self.into_iter().collect()
+    }
+}
+
+impl IntoIterator for AllPackages {
+    type Item = InstalledPackage;
+    type IntoIter = AllPackagesIter;
+
+    fn into_iter(self) -> AllPackagesIter {
+        let mut remaining = self.categories.into_iter();
+        let current = remaining.next().map(|cat| cat.packages().into_iter());
+        AllPackagesIter {
+            current,
+            remaining,
+            filter: self.filter,
+        }
+    }
+}
+
+impl Iterator for AllPackagesIter {
+    type Item = InstalledPackage;
+
+    fn next(&mut self) -> Option<InstalledPackage> {
+        loop {
+            if let Some(current) = &mut self.current {
+                match current.next() {
+                    Some(pkg) => {
+                        if self.filter.as_ref().is_some_and(|f| !f(&pkg)) {
+                            continue;
+                        }
+                        return Some(pkg);
+                    }
+                    None => self.current = None,
+                }
+            } else {
+                let cat = self.remaining.next()?;
+                self.current = Some(cat.packages().into_iter());
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -208,13 +198,18 @@ mod tests {
         }
     }
 
+    fn open_temp_vdb(dir: &std::path::Path) -> Vdb {
+        let root: Utf8PathBuf = dir.to_path_buf().try_into().unwrap();
+        Vdb::open(root).unwrap()
+    }
+
     #[test]
     fn open_and_iterate() {
         let tmp = tempfile::tempdir().unwrap();
         make_fake_vdb(tmp.path());
 
-        let vdb = Vdb::open(tmp.path()).unwrap();
-        let mut pkgs: Vec<_> = vdb.packages().map(|p| p.to_string()).collect();
+        let vdb = open_temp_vdb(tmp.path());
+        let mut pkgs: Vec<_> = vdb.packages().into_iter().map(|p| p.to_string()).collect();
         pkgs.sort();
         assert_eq!(
             pkgs,
@@ -223,40 +218,49 @@ mod tests {
     }
 
     #[test]
-    fn category_names() {
+    fn categories_names() {
         let tmp = tempfile::tempdir().unwrap();
         make_fake_vdb(tmp.path());
 
-        let vdb = Vdb::open(tmp.path()).unwrap();
-        assert_eq!(vdb.category_names(), vec!["app-shells", "sys-libs"]);
+        let vdb = open_temp_vdb(tmp.path());
+        let names: Vec<_> = vdb
+            .categories()
+            .into_iter()
+            .map(|c| c.name().to_string())
+            .collect();
+        assert_eq!(names, vec!["app-shells", "sys-libs"]);
     }
 
     #[test]
-    fn find_package() {
+    fn category_lookup() {
         let tmp = tempfile::tempdir().unwrap();
         make_fake_vdb(tmp.path());
 
-        let vdb = Vdb::open(tmp.path()).unwrap();
-        let pkg = vdb.find("app-shells", "bash-5.3_p9-r2").unwrap();
+        let vdb = open_temp_vdb(tmp.path());
+        let cat = vdb.category("app-shells").unwrap();
+        assert_eq!(cat.name(), "app-shells");
+        assert!(vdb.category("nonexistent").is_none());
+    }
+
+    #[test]
+    fn category_package_lookup() {
+        let tmp = tempfile::tempdir().unwrap();
+        make_fake_vdb(tmp.path());
+
+        let vdb = open_temp_vdb(tmp.path());
+        let cat = vdb.category("app-shells").unwrap();
+        let pkg = cat.package("bash-5.3_p9-r2").unwrap();
         assert_eq!(pkg.pf(), "bash-5.3_p9-r2");
+        assert!(cat.package("nonexistent-1.0").is_none());
     }
 
     #[test]
-    fn find_missing() {
+    fn category_packages_filtered() {
         let tmp = tempfile::tempdir().unwrap();
         make_fake_vdb(tmp.path());
 
-        let vdb = Vdb::open(tmp.path()).unwrap();
-        assert!(vdb.find("app-misc", "nonexistent-1.0").is_none());
-    }
-
-    #[test]
-    fn find_by_cpn() {
-        let tmp = tempfile::tempdir().unwrap();
-        make_fake_vdb(tmp.path());
-
-        let vdb = Vdb::open(tmp.path()).unwrap();
-        let pkgs = vdb.find_by_cpn("sys-libs", "glibc");
+        let vdb = open_temp_vdb(tmp.path());
+        let pkgs = vdb.category("sys-libs").unwrap().packages().collect_vec();
         assert_eq!(pkgs.len(), 1);
         assert_eq!(pkgs[0].pf(), "glibc-2.43-r1");
     }
@@ -266,7 +270,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         make_fake_vdb(tmp.path());
 
-        let vdb = Vdb::open(tmp.path()).unwrap();
+        let vdb = open_temp_vdb(tmp.path());
         assert_eq!(vdb.len(), 2);
         assert!(!vdb.is_empty());
     }
@@ -274,14 +278,28 @@ mod tests {
     #[test]
     fn empty_vdb() {
         let tmp = tempfile::tempdir().unwrap();
-        let vdb = Vdb::open(tmp.path()).unwrap();
+        let vdb = open_temp_vdb(tmp.path());
         assert!(vdb.is_empty());
         assert_eq!(vdb.len(), 0);
     }
 
     #[test]
     fn open_missing_root() {
-        let result = Vdb::open(Path::new("/nonexistent/path"));
+        let result = Vdb::open("/nonexistent/path");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn all_packages_filter() {
+        let tmp = tempfile::tempdir().unwrap();
+        make_fake_vdb(tmp.path());
+
+        let vdb = open_temp_vdb(tmp.path());
+        let pkgs = vdb
+            .packages()
+            .filter(|p| p.category() == "app-shells")
+            .collect_vec();
+        assert_eq!(pkgs.len(), 1);
+        assert_eq!(pkgs[0].pf(), "bash-5.3_p9-r2");
     }
 }
