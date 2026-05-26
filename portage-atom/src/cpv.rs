@@ -41,6 +41,18 @@ impl Cpv {
         Cpv { cpn, version }
     }
 
+    /// Create a [`Cpv`] from separate category, package, and version parts.
+    ///
+    /// Both `category` and `package` are interned. Prefer this over
+    /// constructing a `format!("{category}/{pf}")` string just to parse it.
+    pub fn from_parts(
+        category: impl AsRef<str>,
+        package: impl AsRef<str>,
+        version: Version,
+    ) -> Self {
+        Cpv::new(Cpn::new(category, package), version)
+    }
+
     /// Parse a `category/package-version` string into a [`Cpv`].
     ///
     /// Returns an error if the string does not conform to the PMS format or
