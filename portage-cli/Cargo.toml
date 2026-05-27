@@ -43,6 +43,8 @@ tokio = { workspace = true }
 thiserror = { workspace = true }
 mimalloc = { workspace = true, optional = true }
 md5 = { workspace = true }
+humansize = { workspace = true }
+humantime = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

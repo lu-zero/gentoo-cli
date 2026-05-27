@@ -1,4 +1,7 @@
+use std::time::{Duration, UNIX_EPOCH};
+
 use camino::{Utf8Path, Utf8PathBuf};
+use humansize::{BINARY, format_size};
 
 use portage_vdb::Vdb;
 
@@ -64,14 +67,21 @@ pub fn query_size(vdb: &Vdb, atoms: &[String]) -> Result<()> {
 }
 
 fn print_pkg_size(pkg: &portage_vdb::InstalledPackage) -> Result<()> {
-    match pkg.size() {
-        Ok(Some(bytes)) => {
-            let size_str = humansize(bytes);
-            println!("{}: {}", pkg, size_str);
-        }
-        Ok(None) => println!("{}: size unknown", pkg),
+    let size_str = match pkg.size() {
+        Ok(Some(bytes)) => format_size(bytes, BINARY),
+        Ok(None) => "size unknown".to_string(),
         Err(e) => return Err(Error::Other(format!("{}: {}", pkg, e))),
-    }
+    };
+
+    let built_str = match pkg.build_time() {
+        Ok(Some(ts)) => {
+            let t = UNIX_EPOCH + Duration::from_secs(ts);
+            format!("  built {}", humantime::format_rfc3339_seconds(t))
+        }
+        _ => String::new(),
+    };
+
+    println!("{}: {}{}", pkg, size_str, built_str);
     Ok(())
 }
 
@@ -102,20 +112,5 @@ fn resolve_path(path_str: &str) -> Utf8PathBuf {
         Ok(resolved) => Utf8PathBuf::from_path_buf(resolved)
             .unwrap_or_else(|_| Utf8PathBuf::from(path_str)),
         Err(_) => Utf8PathBuf::from(path_str),
-    }
-}
-
-fn humansize(bytes: u64) -> String {
-    const UNITS: &[&str] = &["B", "KiB", "MiB", "GiB", "TiB"];
-    let mut size = bytes as f64;
-    let mut unit_idx = 0;
-    while size >= 1024.0 && unit_idx < UNITS.len() - 1 {
-        size /= 1024.0;
-        unit_idx += 1;
-    }
-    if unit_idx == 0 {
-        format!("{} {}", bytes, UNITS[0])
-    } else {
-        format!("{:.1} {}", size, UNITS[unit_idx])
     }
 }
