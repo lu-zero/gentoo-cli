@@ -56,7 +56,7 @@ pub use repo::{Categories, CategoriesIter, Category, Packages, PackagesIter};
 pub use repo::Ebuild;
 pub use repo::LayoutConf;
 pub use repo::Package;
-pub use repo::PkgMetadata;
+pub use repo::{Maintainer, MaintainerKind, PkgMetadata};
 pub use repo::UseExpand;
 pub use repo::{CacheEntries, CacheEntriesIter, Ebuilds, EbuildsIter, ProfileUpdate, Repository};
 pub use repo::{Manifest, ManifestEntry};

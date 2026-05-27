@@ -235,20 +235,33 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
         QueryCommand::Keywords { atom } => {
             query::keywords::run(&std::path::PathBuf::from(globals.repo_path()), atom)
         }
-        QueryCommand::List { pattern } => {
-            query::list::run(&std::path::PathBuf::from(globals.repo_path()), pattern)
+        QueryCommand::List { installed, pattern } => {
+            if *installed {
+                let vdb = open_vdb(globals)?;
+                query::list::run_installed(&vdb, pattern)
+            } else {
+                query::list::run(&std::path::PathBuf::from(globals.repo_path()), pattern)
+            }
         }
         QueryCommand::Meta { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery meta: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery meta".into()))
+            let vdb = open_vdb(globals).ok();
+            query::meta::run(
+                &std::path::PathBuf::from(globals.repo_path()),
+                vdb.as_ref(),
+                atom,
+            )
         }
         QueryCommand::Size { atom } => {
             let vdb = open_vdb(globals)?;
             vdb::query_size(&vdb, atom)
         }
         QueryCommand::Uses { atom } => {
-            query::uses::run(&std::path::PathBuf::from(globals.repo_path()), atom)
+            let vdb = open_vdb(globals).ok();
+            query::uses::run(
+                &std::path::PathBuf::from(globals.repo_path()),
+                vdb.as_ref(),
+                atom,
+            )
         }
         QueryCommand::Which { atom } => {
             query::which::run(&std::path::PathBuf::from(globals.repo_path()), atom)

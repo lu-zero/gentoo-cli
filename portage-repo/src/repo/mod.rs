@@ -15,7 +15,7 @@ pub use ebuild::Ebuild;
 pub use layout::LayoutConf;
 pub use manifest::{Manifest, ManifestEntry};
 pub use package::Package;
-pub use pkgmetadata::PkgMetadata;
+pub use pkgmetadata::{Maintainer, MaintainerKind, PkgMetadata};
 pub use profile::{Profile, ProfileDesc, ProfileStack, ProfileStatus};
 pub use repos_conf::{RepoEntry, ReposConf};
 pub use repository::{

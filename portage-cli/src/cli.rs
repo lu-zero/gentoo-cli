@@ -389,6 +389,9 @@ pub enum QueryCommand {
     },
     #[command(about = "List installed/available packages matching a pattern")]
     List {
+        /// List only installed packages (from VDB), not available ones
+        #[arg(short = 'I', long = "installed")]
+        installed: bool,
         /// Glob or substring pattern(s); omit to list all packages
         #[arg()]
         pattern: Vec<String>,
