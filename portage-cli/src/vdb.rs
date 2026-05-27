@@ -75,7 +75,7 @@ fn print_pkg_size(pkg: &portage_vdb::InstalledPackage) -> Result<()> {
     Ok(())
 }
 
-fn find_packages(vdb: &Vdb, pattern: &str) -> Vec<portage_vdb::InstalledPackage> {
+pub(crate) fn find_packages(vdb: &Vdb, pattern: &str) -> Vec<portage_vdb::InstalledPackage> {
     if let Some(slash) = pattern.find('/') {
         let cat_name = &pattern[..slash];
         let rest = &pattern[slash + 1..];
@@ -105,7 +105,7 @@ fn resolve_path(path_str: &str) -> Utf8PathBuf {
     }
 }
 
-fn humansize(bytes: u64) -> String {
+pub(crate) fn humansize(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KiB", "MiB", "GiB", "TiB"];
     let mut size = bytes as f64;
     let mut unit_idx = 0;

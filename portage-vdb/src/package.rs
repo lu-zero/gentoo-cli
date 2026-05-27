@@ -58,6 +58,15 @@ impl InstalledPackage {
 
     // -- Metadata fields (read from individual files) --
 
+    /// Read an arbitrary VDB field by name, returning `None` if the file is absent.
+    ///
+    /// The value is returned as a raw (trimmed) string, exactly as stored on disk.
+    /// Use this for generic `em query has`-style lookups; prefer the typed accessors
+    /// (e.g. [`use_flags`](Self::use_flags), [`slot`](Self::slot)) for normal use.
+    pub fn field(&self, name: &str) -> Result<Option<String>> {
+        self.read_field_opt(name)
+    }
+
     fn read_field(&self, name: &str) -> Result<String> {
         let p = self.path.join(name);
         std::fs::read_to_string(&p)

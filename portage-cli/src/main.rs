@@ -200,9 +200,8 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             vdb::query_belongs(&vdb, file)
         }
         QueryCommand::Check { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery check: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery check".into()))
+            let vdb = open_vdb(globals)?;
+            query::check::run(&vdb, atom)
         }
         QueryCommand::Depends { atom } => {
             query::depends::run(&std::path::PathBuf::from(globals.repo_path()), atom)
@@ -227,9 +226,8 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
             vdb::query_files(&vdb, atom)
         }
         QueryCommand::Has { atom } => {
-            let parsed = parse_atoms(atom);
-            eprintln!("equery has: {:?}", parsed);
-            Err(error::Error::NotImplemented("equery has".into()))
+            let vdb = open_vdb(globals)?;
+            query::has::run(&vdb, atom)
         }
         QueryCommand::Hasuse { flag } => {
             query::hasuse::run(&std::path::PathBuf::from(globals.repo_path()), flag)
