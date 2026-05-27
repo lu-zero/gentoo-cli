@@ -105,7 +105,7 @@ fn resolve_path(path_str: &str) -> Utf8PathBuf {
     }
 }
 
-pub(crate) fn humansize(bytes: u64) -> String {
+fn humansize(bytes: u64) -> String {
     const UNITS: &[&str] = &["B", "KiB", "MiB", "GiB", "TiB"];
     let mut size = bytes as f64;
     let mut unit_idx = 0;
