@@ -36,6 +36,7 @@
 pub(crate) mod build;
 pub mod cache;
 mod error;
+pub mod make_conf;
 pub(crate) mod repo;
 pub mod source;
 
@@ -56,6 +57,7 @@ pub use repo::{Categories, CategoriesIter, Category, Packages, PackagesIter};
 pub use repo::Ebuild;
 pub use repo::LayoutConf;
 pub use repo::Package;
+pub use make_conf::{MakeConf, QuoteStyle, DEFAULT_MAKE_CONF, LEGACY_MAKE_CONF};
 pub use repo::{Maintainer, MaintainerKind, PkgMetadata};
 pub use repo::UseExpand;
 pub use repo::{CacheEntries, CacheEntriesIter, Ebuilds, EbuildsIter, ProfileUpdate, Repository};
