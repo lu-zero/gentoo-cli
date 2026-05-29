@@ -8,6 +8,7 @@ pub mod profile;
 pub mod repos_conf;
 pub mod repository;
 pub mod use_expand;
+pub mod usedb;
 pub(crate) mod util;
 
 pub use category::{Categories, CategoriesIter, Category, Packages, PackagesIter};
@@ -22,3 +23,4 @@ pub use repository::{
     CacheEntries, CacheEntriesIter, Ebuilds, EbuildsIter, ProfileUpdate, Repository,
 };
 pub use use_expand::UseExpand;
+pub use usedb::UseDb;

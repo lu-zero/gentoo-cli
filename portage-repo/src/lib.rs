@@ -59,6 +59,7 @@ pub use repo::LayoutConf;
 pub use repo::Package;
 pub use make_conf::{MakeConf, DEFAULT_MAKE_CONF, LEGACY_MAKE_CONF};
 pub use repo::{Maintainer, MaintainerKind, PkgMetadata};
+pub use repo::UseDb;
 pub use repo::UseExpand;
 pub use repo::{CacheEntries, CacheEntriesIter, Ebuilds, EbuildsIter, ProfileUpdate, Repository};
 pub use repo::{Manifest, ManifestEntry};

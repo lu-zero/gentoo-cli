@@ -632,6 +632,14 @@ impl Repository {
         parse_desc_file(self.path.join("profiles").join("use.desc"))
     }
 
+    /// Build a [`crate::UseDb`] for this repository.
+    ///
+    /// Combines global (`use.desc`) and package-local (`use.local.desc`)
+    /// USE flag descriptions into an indexed structure with O(log n) lookup.
+    pub fn use_db(&self) -> Result<crate::UseDb> {
+        crate::UseDb::load(&self.path)
+    }
+
     /// Parse per-package USE flag descriptions from `profiles/use.local.desc`.
     ///
     /// Returns `(Cpn, flag_name, description)` tuples.

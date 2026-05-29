@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::Path;
 
 use portage_metadata::IUseDefault;
@@ -12,10 +12,7 @@ use portage_atom::Dep;
 
 pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> {
     let repo = Repository::open(repo_path).map_err(|e| Error::Other(e.to_string()))?;
-
-    // Build USE flag description map from global use.desc
-    let use_descs: HashMap<String, String> =
-        repo.use_desc().unwrap_or_default().into_iter().collect();
+    let use_db = repo.use_db().unwrap_or_else(|_| portage_repo::UseDb::default());
 
     let ebuilds: Vec<_> = repo
         .ebuilds()
@@ -86,7 +83,8 @@ pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> 
                 None => "   ",
             };
 
-            let desc = use_descs.get(name).map(|s| s.as_str()).unwrap_or("");
+            let cpn = cpv.cpn.to_string();
+            let desc = use_db.describe(&cpn, name).unwrap_or("");
             println!("  {iuse_prefix}{name:<30} {installed_marker}  {desc}");
         }
     }
