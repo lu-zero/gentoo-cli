@@ -387,6 +387,9 @@ pub enum QueryCommand {
     Depgraph {
         #[arg(required = true)]
         atom: Vec<String>,
+        /// Output format
+        #[arg(long, short, value_enum, default_value = "pretty")]
+        format: DepgraphFormat,
     },
     #[command(about = "List files installed by a package", alias = "f")]
     Files {
@@ -480,6 +483,15 @@ pub enum LogCommand {
     List { limit: Option<u32> },
     #[command(about = "Show merge times for a package")]
     Time { atom: Option<String> },
+}
+
+/// Output format for `em query depgraph`.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+pub enum DepgraphFormat {
+    /// emerge -p style pretend output
+    Pretty,
+    /// Machine-parsable JSON
+    Json,
 }
 
 fn parse_arch(s: &str) -> std::result::Result<Arch, String> {

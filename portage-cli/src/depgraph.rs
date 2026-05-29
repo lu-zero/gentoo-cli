@@ -1,15 +1,21 @@
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::collections::HashMap;
 
+use camino::Utf8Path;
 use gentoo_core::Arch;
 use portage_atom::interner::{DefaultInterner, Interned};
-use portage_atom::{Cpn, Cpv, Dep, Operator};
+use portage_atom::{Cpn, Cpv, Dep, Operator, Version};
 use portage_atom_pubgrub::{
     DepClass, IUseDefault, PackageDeps, PackageRepository, PackageVersions,
     PortageDependencyProvider, PortagePackage, PortageVersionSet, UseConfig,
 };
-use portage_metadata::{Keyword, Stability};
+use portage_metadata::{CacheEntry, Keyword, Stability};
 use portage_repo::Repository;
+
+use crate::cli::DepgraphFormat;
+
+// ---------------------------------------------------------------------------
+// Repository adapter
+// ---------------------------------------------------------------------------
 
 fn keyword_accepts(keywords: &[Keyword], arch: &str) -> bool {
     keywords.iter().any(|kw| {
@@ -19,7 +25,7 @@ fn keyword_accepts(keywords: &[Keyword], arch: &str) -> bool {
 
 struct RepoData {
     cpns: Vec<Cpn>,
-    versions: HashMap<Cpn, Vec<(Cpv, portage_metadata::CacheEntry)>>,
+    versions: HashMap<Cpn, Vec<(Cpv, CacheEntry)>>,
     repo_name: String,
 }
 
@@ -51,7 +57,8 @@ impl PackageRepository for Adapter<'_> {
                             Some(meta.slot.slot)
                         };
                         let subslot = meta.slot.subslot;
-                        let repo = Some(Interned::<DefaultInterner>::intern(&self.data.repo_name));
+                        let repo =
+                            Some(Interned::<DefaultInterner>::intern(&self.data.repo_name));
                         let iuse: Vec<Interned<DefaultInterner>> = meta
                             .iuse
                             .iter()
@@ -100,11 +107,10 @@ impl PackageRepository for Adapter<'_> {
 }
 
 fn load_repo(repo: &Repository) -> RepoData {
+    use std::collections::HashSet;
     let mut cpns_set: HashSet<Cpn> = HashSet::new();
-    let mut versions: HashMap<Cpn, Vec<(Cpv, portage_metadata::CacheEntry)>> = HashMap::new();
+    let mut versions: HashMap<Cpn, Vec<(Cpv, CacheEntry)>> = HashMap::new();
 
-    // Iterate the md5-cache tree directly — depgraph requires cache entries,
-    // so anything without one would have been skipped anyway.
     for (cpv, entry) in repo.cache_entries() {
         let Ok(entry) = entry else { continue };
         let cpn = cpv.cpn;
@@ -129,11 +135,7 @@ fn target_package(data: &RepoData, dep: &Dep) -> PortagePackage {
                 .iter()
                 .filter_map(|(_, cache)| {
                     let s = &cache.metadata.slot.slot;
-                    if s.as_str().is_empty() {
-                        None
-                    } else {
-                        Some(*s)
-                    }
+                    if s.as_str().is_empty() { None } else { Some(*s) }
                 })
                 .collect();
             slots.sort_by(|a, b| a.as_str().cmp(b.as_str()));
@@ -146,11 +148,7 @@ fn target_package(data: &RepoData, dep: &Dep) -> PortagePackage {
                         .iter()
                         .filter_map(|(cpv, cache)| {
                             let s = &cache.metadata.slot.slot;
-                            if s.as_str().is_empty() {
-                                None
-                            } else {
-                                Some((cpv.version.clone(), *s))
-                            }
+                            if s.as_str().is_empty() { None } else { Some((cpv.version.clone(), *s)) }
                         })
                         .max_by(|a, b| a.0.cmp(&b.0))
                         .map(|(_, s)| s)
@@ -163,31 +161,42 @@ fn target_package(data: &RepoData, dep: &Dep) -> PortagePackage {
     }
 }
 
+/// Look up the cache entry for a resolved `(PortagePackage, Version)` pair.
+fn find_cache<'a>(
+    data: &'a RepoData,
+    pkg: &PortagePackage,
+    ver: &Version,
+) -> Option<&'a CacheEntry> {
+    data.versions
+        .get(pkg.cpn())?
+        .iter()
+        .find(|(cpv, _)| &cpv.version == ver)
+        .map(|(_, e)| e)
+}
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
 pub fn depgraph(
-    repo_path: &Path,
+    repo_path: &Utf8Path,
     atoms: &[String],
     arch: &Arch,
-    use_flags: Option<&HashSet<String>>,
+    format: DepgraphFormat,
 ) -> crate::error::Result<()> {
-    let repo =
-        Repository::open(repo_path).map_err(|e| crate::error::Error::Other(e.to_string()))?;
+    let repo = Repository::open(repo_path)
+        .map_err(|e| crate::error::Error::Other(e.to_string()))?;
     let data = load_repo(&repo);
 
     let adapter = Adapter { data: &data, arch };
-
-    let mut use_config = UseConfig::new();
-    if let Some(flags) = use_flags {
-        for flag in flags {
-            use_config.enable(Interned::intern(flag));
-        }
-    }
-
+    let use_config = UseConfig::new();
     let mut provider = PortageDependencyProvider::new(adapter, use_config, &[]);
 
     let mut root_deps = Vec::new();
     for target in atoms {
-        let dep = Dep::parse(target)
-            .map_err(|e| crate::error::Error::Other(format!("bad atom '{}': {}", target, e)))?;
+        let dep = Dep::parse(target).map_err(|e| {
+            crate::error::Error::Other(format!("bad atom '{}': {}", target, e))
+        })?;
         let pkg = target_package(&data, &dep);
         let vs = match &dep.version {
             Some(v) => {
@@ -203,51 +212,159 @@ pub fn depgraph(
     if !dropped.is_empty() {
         let mut cpns: Vec<String> = dropped
             .iter()
-            .map(|(pkg, _)| format!("{}", pkg.cpn()))
+            .filter(|(pkg, _)| !pkg.is_virtual())
+            .map(|(pkg, _)| pkg.cpn().to_string())
             .collect();
         cpns.sort();
         cpns.dedup();
-        eprintln!(
-            "warning: {} dropped deps ({} unique CPNs)",
-            dropped.len(),
-            cpns.len()
-        );
+        if !cpns.is_empty() {
+            eprintln!(
+                "warning: {} dropped deps ({} unique CPNs)",
+                dropped.len(),
+                cpns.len()
+            );
+        }
     }
 
     let solution = provider
         .resolve_targets(root_deps)
         .map_err(|e| crate::error::Error::Other(format!("resolution failed: {:?}", e)))?;
 
-    let edges = provider.dependency_graph(&solution);
-    let order = provider.install_order(&solution);
-    println!("Packages: {}", order.len());
+    // Virtual packages (USE-decision nodes, synthetic root) are internal solver
+    // bookkeeping — strip them before output.
+    let order: Vec<_> = provider
+        .install_order(&solution)
+        .into_iter()
+        .filter(|(pkg, _)| !pkg.is_virtual())
+        .collect();
+    let edges: Vec<_> = provider
+        .dependency_graph(&solution)
+        .into_iter()
+        .filter(|e| !e.from.0.is_virtual() && !e.to.0.is_virtual())
+        .collect();
 
-    let class_label = |c: DepClass| match c {
+    match format {
+        DepgraphFormat::Pretty => print_pretty(&data, &order, &edges),
+        DepgraphFormat::Json => print_json(&data, &order, &edges),
+    }
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Pretty output — emerge -p style
+// ---------------------------------------------------------------------------
+
+fn iuse_tokens(cache: &CacheEntry) -> Vec<String> {
+    let mut flags: Vec<_> = cache.metadata.iuse.iter().collect();
+    flags.sort_by_key(|f| f.name());
+    flags
+        .iter()
+        .map(|f| match f.default {
+            Some(portage_metadata::IUseDefault::Enabled) => f.name().to_string(),
+            _ => format!("-{}", f.name()),
+        })
+        .collect()
+}
+
+fn print_pretty(
+    data: &RepoData,
+    order: &[(PortagePackage, Version)],
+    _edges: &[portage_atom_pubgrub::DepEdge],
+) {
+    println!("These are the packages that would be merged, in order:\n");
+    println!("Calculating dependencies... done!");
+
+    for (pkg, ver) in order {
+        let cpn = pkg.cpn();
+        // Tag: always N (new) since we don't check VDB here
+        let tag = "N";
+        let repo = &data.repo_name;
+
+        let use_str = find_cache(data, pkg, ver)
+            .map(|c| {
+                let tokens = iuse_tokens(c);
+                if tokens.is_empty() {
+                    String::new()
+                } else {
+                    format!("  USE=\"{}\"", tokens.join(" "))
+                }
+            })
+            .unwrap_or_default();
+
+        println!("[ebuild  {tag:<6}] {cpn}-{ver}::{repo}{use_str}");
+    }
+
+    println!("\nTotal: {} package(s)", order.len());
+}
+
+// ---------------------------------------------------------------------------
+// JSON output
+// ---------------------------------------------------------------------------
+
+fn class_str(c: DepClass) -> &'static str {
+    match c {
         DepClass::Depend => "DEPEND",
         DepClass::Rdepend => "RDEPEND",
         DepClass::Bdepend => "BDEPEND",
         DepClass::Pdepend => "PDEPEND",
         DepClass::Idepend => "IDEPEND",
-    };
-
-    if !edges.is_empty() {
-        println!("\nDependency graph:");
-        for edge in &edges {
-            println!(
-                "  {}-{} --[{}]--> {}-{}",
-                edge.from.0,
-                edge.from.1,
-                class_label(edge.class),
-                edge.to.0,
-                edge.to.1,
-            );
-        }
     }
+}
 
-    println!("\nInstall order:");
-    for (i, (pkg, ver)) in order.iter().enumerate() {
-        println!("  {:>3}. {}-{}", i + 1, pkg.cpn(), ver);
-    }
+fn print_json(
+    data: &RepoData,
+    order: &[(PortagePackage, Version)],
+    edges: &[portage_atom_pubgrub::DepEdge],
+) {
+    let packages: Vec<serde_json::Value> = order
+        .iter()
+        .map(|(pkg, ver)| {
+            let cpn = pkg.cpn();
+            let mut obj = serde_json::json!({
+                "atom": format!("{cpn}-{ver}"),
+                "cpn": cpn.to_string(),
+                "version": ver.to_string(),
+                "repo": data.repo_name,
+                "status": "new",
+            });
+            if let Some(cache) = find_cache(data, pkg, ver) {
+                let slot = &cache.metadata.slot;
+                obj["slot"] = serde_json::Value::String(slot.slot.as_str().to_owned());
+                if let Some(sub) = slot.subslot {
+                    obj["subslot"] = serde_json::Value::String(sub.as_str().to_owned());
+                }
+                let iuse: Vec<String> = {
+                    let mut flags: Vec<_> = cache.metadata.iuse.iter().collect();
+                    flags.sort_by_key(|f| f.name());
+                    flags.iter().map(|f| match f.default {
+                        Some(portage_metadata::IUseDefault::Enabled) => {
+                            format!("+{}", f.name())
+                        }
+                        _ => format!("-{}", f.name()),
+                    }).collect()
+                };
+                obj["iuse"] = serde_json::json!(iuse);
+            }
+            obj
+        })
+        .collect();
 
-    Ok(())
+    let dep_edges: Vec<serde_json::Value> = edges
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "from": format!("{}-{}", e.from.0.cpn(), e.from.1),
+                "to": format!("{}-{}", e.to.0.cpn(), e.to.1),
+                "class": class_str(e.class),
+            })
+        })
+        .collect();
+
+    let out = serde_json::json!({
+        "packages": packages,
+        "edges": dep_edges,
+    });
+
+    println!("{}", serde_json::to_string_pretty(&out).unwrap());
 }

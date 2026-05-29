@@ -54,8 +54,13 @@ impl PortageDependencyProvider {
         ];
 
         // Index solution by CPN so dependency lookups are O(1) instead of O(n).
+        // Skip virtual packages (USE-decision nodes, synthetic root) — they
+        // have no CPN and must not appear in the output graph.
         let mut by_cpn: HashMap<&Cpn, Vec<(&PortagePackage, &Version)>> = HashMap::new();
         for (sol_pkg, sol_ver) in solution.iter() {
+            if sol_pkg.is_virtual() {
+                continue;
+            }
             by_cpn
                 .entry(sol_pkg.cpn())
                 .or_default()
@@ -72,6 +77,9 @@ impl PortageDependencyProvider {
 
             for (class_idx, &class) in classes.iter().enumerate() {
                 for (dep_pkg, dep_vs) in &vd.by_class[class_idx] {
+                    if dep_pkg.is_virtual() {
+                        continue;
+                    }
                     if let Some(candidates) = by_cpn.get(dep_pkg.cpn()) {
                         for &(sol_pkg, sol_ver) in candidates {
                             if dep_vs.contains(sol_ver) {

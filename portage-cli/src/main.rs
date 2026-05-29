@@ -255,7 +255,7 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
         QueryCommand::Depends { atom } => {
             query::depends::run(&std::path::PathBuf::from(globals.repo_path()), atom)
         }
-        QueryCommand::Depgraph { atom } => {
+        QueryCommand::Depgraph { atom, format } => {
             let parsed = parse_atoms(atom);
             let atoms: Vec<String> = parsed.iter().map(|d| d.to_string()).collect();
             if atoms.is_empty() {
@@ -264,11 +264,11 @@ fn run_query(command: &QueryCommand, globals: &cli::Cli) -> Result<()> {
                 ));
             }
             let resolved = globals.repo_path();
-            let repo_path = std::path::Path::new(&resolved);
+            let repo_path = camino::Utf8Path::new(&resolved);
             if !repo_path.is_dir() {
                 return Err(error::Error::Other(format!("repo not found at {resolved}")));
             }
-            depgraph::depgraph(repo_path, &atoms, &globals.arch, None)
+            depgraph::depgraph(repo_path, &atoms, &globals.arch, *format)
         }
         QueryCommand::Files { atom } => {
             let vdb = open_vdb(globals)?;
