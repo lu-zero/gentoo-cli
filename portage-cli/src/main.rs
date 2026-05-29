@@ -1,6 +1,7 @@
 mod cli;
 mod depgraph;
 mod error;
+mod maint;
 mod query;
 mod regen;
 mod search;
@@ -67,7 +68,7 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
             eprintln!("ebuild: path={} phases={:?}", ebuild_path, phase);
             Err(error::Error::NotImplemented("ebuild".into()))
         }
-        Applet::Maint { command } => run_maint(command),
+        Applet::Maint { command } => run_maint(command, globals),
         Applet::Portageq { command, args } => {
             eprintln!("portageq: command={} args={:?}", command, args);
             Err(error::Error::NotImplemented("portageq".into()))
@@ -167,7 +168,7 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
     }
 }
 
-fn run_maint(command: &Option<MaintCommand>) -> Result<()> {
+fn run_maint(command: &Option<MaintCommand>, globals: &cli::Cli) -> Result<()> {
     match command {
         None => Err(error::Error::NotImplemented(
             "emaint (no subcommand)".into(),
@@ -183,15 +184,25 @@ fn run_maint(command: &Option<MaintCommand>) -> Result<()> {
         Some(MaintCommand::Logs) => Err(error::Error::NotImplemented("emaint logs".into())),
         Some(MaintCommand::Merges) => Err(error::Error::NotImplemented("emaint merges".into())),
         Some(MaintCommand::Movebin) => Err(error::Error::NotImplemented("emaint movebin".into())),
-        Some(MaintCommand::Moveinst) => Err(error::Error::NotImplemented("emaint moveinst".into())),
+        Some(MaintCommand::Moveinst) => {
+            let vdb = open_vdb(globals)?;
+            let resolved = globals.repo_path();
+            let repo_path = camino::Utf8Path::new(&resolved);
+            maint::moveinst::run(repo_path, &vdb)
+        }
         Some(MaintCommand::Revisions) => {
-            Err(error::Error::NotImplemented("emaint revisions".into()))
+            let vdb = open_vdb(globals)?;
+            maint::revisions::run(&vdb)
         }
         Some(MaintCommand::Sync { repos }) => {
             eprintln!("emaint: sync repos={:?}", repos);
             Err(error::Error::NotImplemented("emaint sync".into()))
         }
-        Some(MaintCommand::World) => Err(error::Error::NotImplemented("emaint world".into())),
+        Some(MaintCommand::World) => {
+            let vdb = open_vdb(globals)?;
+            let root = globals.root.as_deref().map(camino::Utf8Path::new);
+            maint::world::run(&vdb, root)
+        }
     }
 }
 
