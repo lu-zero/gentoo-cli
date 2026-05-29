@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use camino::Utf8Path;
 
 use crate::{Error, Result};
+use crate::repo::repository::Repository;
 
 /// Database of USE flag descriptions for a Gentoo repository.
 ///
@@ -61,6 +62,55 @@ impl UseDb {
             .and_then(|m| m.get(flag))
             .map(String::as_str)
             .or_else(|| self.describe_global(flag))
+    }
+
+    /// Build the local USE flag table by scanning every package's `metadata.xml`.
+    ///
+    /// Walks the entire repository and collects `<use><flag>` entries from each
+    /// package that has a `metadata.xml`.  The global table is left unchanged.
+    ///
+    /// This is the source-of-truth pass used to regenerate `profiles/use.local.desc`.
+    pub fn build_local_from_repo(repo: &Repository) -> Result<Self> {
+        let global = parse_use_desc(&repo.path().join("profiles/use.desc"))?;
+        let mut local: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+
+        for cat in repo.categories() {
+            for pkg in cat.packages() {
+                if !pkg.has_metadata_xml() {
+                    continue;
+                }
+                let flags = match pkg.metadata_xml()? {
+                    Some(meta) if !meta.use_flags().is_empty() => meta.into_use_flags(),
+                    _ => continue,
+                };
+                local.insert(pkg.cpn().to_string(), flags);
+            }
+        }
+
+        Ok(Self { global, local })
+    }
+
+    /// Serialise the local USE flag table to `profiles/use.local.desc` format.
+    ///
+    /// Entries are sorted by `cat/pkg` then flag name, matching the layout
+    /// produced by `pmaint regen`.
+    pub fn write_use_local_desc(&self, path: &Utf8Path) -> Result<()> {
+        let mut out = String::from(
+            "# This file is deprecated as per GLEP 56 in favor of metadata.xml.\n\
+             # Please add your descriptions to your package's metadata.xml ONLY.\n\
+             # * generated automatically using em maint *\n",
+        );
+
+        for (cpn, flags) in &self.local {
+            for (flag, desc) in flags {
+                out.push_str(&format!("{cpn}:{flag} - {desc}\n"));
+            }
+        }
+
+        std::fs::write(path, out).map_err(|e| Error::Io {
+            path: path.to_path_buf().into_std_path_buf(),
+            source: e,
+        })
     }
 }
 

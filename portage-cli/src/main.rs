@@ -190,6 +190,24 @@ fn run_maint(command: &Option<MaintCommand>, globals: &cli::Cli) -> Result<()> {
             let repo_path = camino::Utf8Path::new(&resolved);
             maint::moveinst::run(repo_path, &vdb)
         }
+        Some(MaintCommand::RegenUse) => {
+            let resolved = globals.repo_path();
+            let repo_path = camino::Utf8Path::new(&resolved);
+            let repo = portage_repo::Repository::open(repo_path)
+                .map_err(|e| error::Error::Other(e.to_string()))?;
+            let use_db = portage_repo::UseDb::build_local_from_repo(&repo)
+                .map_err(|e| error::Error::Other(e.to_string()))?;
+            let out_path = repo.path().join("profiles/use.local.desc");
+            use_db
+                .write_use_local_desc(&out_path)
+                .map_err(|e| error::Error::Other(e.to_string()))?;
+            let count: usize = use_db
+                .packages_with_local_flags()
+                .map(|_| 1)
+                .sum();
+            println!("Wrote {count} packages to {out_path}.");
+            Ok(())
+        }
         Some(MaintCommand::Revisions { repos }) => {
             let root = globals.root.as_deref().map(camino::Utf8Path::new);
             maint::revisions::run(repos, root)

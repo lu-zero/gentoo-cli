@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::path::Path;
 
 use portage_metadata::IUseDefault;
@@ -35,7 +35,6 @@ pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> 
 
         matches.sort_by(|a, b| a.cpv().version.cmp(&b.cpv().version));
 
-        // Use the best (latest) match
         let best = matches.last().unwrap();
         let cpv = best.cpv();
         let entry = repo
@@ -43,11 +42,19 @@ pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> 
             .map_err(|e| Error::Other(e.to_string()))?
             .ok_or_else(|| Error::Other(format!("no cache entry for {cpv} — run `em regen`")))?;
 
-        // Look up the installed USE flags for this CPN (any installed version).
+        // Load per-package metadata.xml use_flags as fallback for packages
+        // not yet represented in use.local.desc (e.g. overlay packages).
+        let xml_flags: BTreeMap<String, String> = best
+            .path()
+            .parent()
+            .and_then(|dir| std::fs::read_to_string(dir.join("metadata.xml")).ok())
+            .and_then(|xml| portage_repo::PkgMetadata::parse(&xml).ok())
+            .map(|meta| meta.into_use_flags())
+            .unwrap_or_default();
+
         let installed_flags: Option<(String, HashSet<String>)> = vdb.and_then(|v| {
             find_packages(v, &cpv.cpn.to_string())
                 .into_iter()
-                // prefer highest installed version
                 .max_by(|a, b| a.cpv().version.cmp(&b.cpv().version))
                 .and_then(|pkg| {
                     let version = pkg.cpv().to_string();
@@ -57,7 +64,6 @@ pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> 
                 })
         });
 
-        // Header: show which version is installed if it differs from the best repo version
         match &installed_flags {
             Some((installed_ver, _)) if installed_ver != &cpv.to_string() => {
                 println!("[{cpv}]  (installed: {installed_ver})");
@@ -69,6 +75,7 @@ pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> 
         let mut flags: Vec<_> = entry.metadata.iuse.iter().collect();
         flags.sort_by_key(|f| f.name());
 
+        let cpn = cpv.cpn.to_string();
         for flag in flags {
             let iuse_prefix = match flag.default {
                 Some(IUseDefault::Enabled) => "+",
@@ -83,8 +90,10 @@ pub fn run(repo_path: &Path, vdb: Option<&Vdb>, atoms: &[String]) -> Result<()> 
                 None => "   ",
             };
 
-            let cpn = cpv.cpn.to_string();
-            let desc = use_db.describe(&cpn, name).unwrap_or("");
+            let desc = use_db
+                .describe(&cpn, name)
+                .or_else(|| xml_flags.get(name).map(String::as_str))
+                .unwrap_or("");
             println!("  {iuse_prefix}{name:<30} {installed_marker}  {desc}");
         }
     }
