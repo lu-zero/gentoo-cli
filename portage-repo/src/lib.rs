@@ -37,6 +37,7 @@ pub(crate) mod build;
 pub mod cache;
 mod error;
 pub mod make_conf;
+pub mod package_conf;
 pub(crate) mod repo;
 pub mod source;
 
@@ -58,6 +59,7 @@ pub use repo::Ebuild;
 pub use repo::LayoutConf;
 pub use repo::Package;
 pub use make_conf::{MakeConf, DEFAULT_MAKE_CONF, LEGACY_MAKE_CONF};
+pub use package_conf::{PackageConf, Token as PackageToken};
 pub use repo::{Maintainer, MaintainerKind, PkgMetadata};
 pub use repo::UseDb;
 pub use repo::UseExpand;

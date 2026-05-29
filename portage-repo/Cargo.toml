@@ -39,6 +39,7 @@ mimalloc = { version = "0.1.50", optional = true }
 camino = { workspace = true }
 papaya = { workspace = true }
 md5 = "0.7"
+winnow = { version = "1", features = ["parser"] }
 
 [dev-dependencies]
 libc = "0.2"
