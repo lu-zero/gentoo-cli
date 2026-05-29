@@ -17,8 +17,8 @@
 //! [`Entry::Opaque`] and reproduced verbatim.
 
 use std::ops::Range;
-use std::path::Path;
 
+use camino::Utf8Path;
 use brush_parser::ast::{
     AssignmentName, AssignmentValue, Command, CommandPrefixOrSuffixItem, SourceLocation,
 };
@@ -71,9 +71,9 @@ struct Var {
 
 impl MakeConf {
     /// Read and parse `path`.
-    pub fn load(path: &Path) -> Result<Self> {
+    pub fn load(path: &Utf8Path) -> Result<Self> {
         let src = std::fs::read_to_string(path).map_err(|e| Error::Io {
-            path: path.to_owned(),
+            path: path.to_path_buf().into_std_path_buf(),
             source: e,
         })?;
         Self::parse(src)
@@ -82,13 +82,15 @@ impl MakeConf {
     /// Load whichever of [`DEFAULT_MAKE_CONF`] / [`LEGACY_MAKE_CONF`] exists.
     pub fn load_default() -> Result<Self> {
         for path in [DEFAULT_MAKE_CONF, LEGACY_MAKE_CONF] {
-            let p = Path::new(path);
+            let p = Utf8Path::new(path);
             if p.exists() {
                 return Self::load(p);
             }
         }
         Err(Error::Io {
-            path: Path::new(DEFAULT_MAKE_CONF).to_owned(),
+            path: Utf8Path::new(DEFAULT_MAKE_CONF)
+                .to_path_buf()
+                .into_std_path_buf(),
             source: std::io::Error::new(std::io::ErrorKind::NotFound, "no make.conf found"),
         })
     }
@@ -198,9 +200,9 @@ impl MakeConf {
     }
 
     /// Save to `path`.
-    pub fn save(&self, path: &Path) -> Result<()> {
+    pub fn save(&self, path: &Utf8Path) -> Result<()> {
         std::fs::write(path, self.to_string()).map_err(|e| Error::Io {
-            path: path.to_owned(),
+            path: path.to_path_buf().into_std_path_buf(),
             source: e,
         })
     }

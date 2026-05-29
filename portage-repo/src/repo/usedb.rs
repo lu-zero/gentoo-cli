@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
-use std::path::Path;
+
+use camino::Utf8Path;
 
 use crate::{Error, Result};
 
 /// Database of USE flag descriptions for a Gentoo repository.
-#[derive(Default)]
 ///
 /// Combines two profile-level files:
 /// - `profiles/use.desc` — global flags available to all packages
@@ -15,6 +15,7 @@ use crate::{Error, Result};
 /// sections, so loading it is O(file size) rather than O(number of packages).
 /// For packages not represented (e.g. in overlays that haven't been regen'd),
 /// callers can fall back to [`crate::PkgMetadata::load`] directly.
+#[derive(Default)]
 pub struct UseDb {
     /// Global flag descriptions from `profiles/use.desc`.
     global: BTreeMap<String, String>,
@@ -25,8 +26,8 @@ pub struct UseDb {
 
 impl UseDb {
     /// Load from a repository root directory.
-    pub fn load(repo_path: impl AsRef<Path>) -> Result<Self> {
-        let profiles = repo_path.as_ref().join("profiles");
+    pub fn load(repo_path: &Utf8Path) -> Result<Self> {
+        let profiles = repo_path.join("profiles");
         let global = parse_use_desc(&profiles.join("use.desc"))?;
         let local = parse_use_local_desc(&profiles.join("use.local.desc"))?;
         Ok(Self { global, local })
@@ -64,13 +65,13 @@ impl UseDb {
 }
 
 /// Parse `profiles/use.desc`.  Each non-comment line is `flag - description`.
-fn parse_use_desc(path: &Path) -> Result<BTreeMap<String, String>> {
+fn parse_use_desc(path: &Utf8Path) -> Result<BTreeMap<String, String>> {
     let mut map = BTreeMap::new();
     if !path.exists() {
         return Ok(map);
     }
     let content = std::fs::read_to_string(path).map_err(|e| Error::Io {
-        path: path.to_owned(),
+        path: path.to_path_buf().into_std_path_buf(),
         source: e,
     })?;
     for line in content.lines() {
@@ -87,13 +88,13 @@ fn parse_use_desc(path: &Path) -> Result<BTreeMap<String, String>> {
 
 /// Parse `profiles/use.local.desc`.  Each non-comment line is
 /// `cat/pkg:flag - description`.
-fn parse_use_local_desc(path: &Path) -> Result<BTreeMap<String, BTreeMap<String, String>>> {
+fn parse_use_local_desc(path: &Utf8Path) -> Result<BTreeMap<String, BTreeMap<String, String>>> {
     let mut map: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     if !path.exists() {
         return Ok(map);
     }
     let content = std::fs::read_to_string(path).map_err(|e| Error::Io {
-        path: path.to_owned(),
+        path: path.to_path_buf().into_std_path_buf(),
         source: e,
     })?;
     for line in content.lines() {
@@ -120,18 +121,19 @@ mod tests {
     use std::io::Write;
     use tempfile::tempdir;
 
-    fn write_file(dir: &std::path::Path, name: &str, content: &str) {
+    fn write_file(dir: &Utf8Path, name: &str, content: &str) {
         let mut f = std::fs::File::create(dir.join(name)).unwrap();
         f.write_all(content.as_bytes()).unwrap();
     }
 
     fn make_repo(use_desc: &str, use_local_desc: &str) -> (tempfile::TempDir, UseDb) {
         let dir = tempdir().unwrap();
-        let profiles = dir.path().join("profiles");
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        let profiles = root.join("profiles");
         std::fs::create_dir(&profiles).unwrap();
         write_file(&profiles, "use.desc", use_desc);
         write_file(&profiles, "use.local.desc", use_local_desc);
-        let db = UseDb::load(dir.path()).unwrap();
+        let db = UseDb::load(root).unwrap();
         (dir, db)
     }
 
@@ -182,8 +184,9 @@ mod tests {
     #[test]
     fn missing_files_return_empty() {
         let dir = tempdir().unwrap();
-        std::fs::create_dir(dir.path().join("profiles")).unwrap();
-        let db = UseDb::load(dir.path()).unwrap();
+        let root = Utf8Path::from_path(dir.path()).unwrap();
+        std::fs::create_dir(root.join("profiles")).unwrap();
+        let db = UseDb::load(root).unwrap();
         assert_eq!(db.global().len(), 0);
         assert_eq!(db.packages_with_local_flags().count(), 0);
     }
