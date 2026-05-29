@@ -1,0 +1,4 @@
+[patch."https://github.com/lu-zero/brush.git"]
+brush-core = { path = "/home/lu_zero/Sources/brush/brush-core" }
+brush-builtins = { path = "/home/lu_zero/Sources/brush/brush-builtins" }
+brush-parser = { path = "/home/lu_zero/Sources/brush/brush-parser" }
