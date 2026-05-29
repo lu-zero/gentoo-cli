@@ -7,50 +7,75 @@ use crate::query::which::dep_matches_cpv;
 
 const DEFAULT_WORLD: &str = "/var/lib/portage/world";
 
-pub fn run(vdb: &Vdb, root: Option<&Utf8Path>) -> Result<()> {
-    let world_path = world_path(root);
+pub fn run(vdb: &Vdb, fix: bool, root: Option<&Utf8Path>) -> Result<()> {
+    let path = world_path(root);
 
-    let content = std::fs::read_to_string(&world_path).map_err(|e| {
-        Error::Other(format!("reading {}: {}", world_path, e))
+    let content = std::fs::read_to_string(&path).map_err(|e| {
+        Error::Other(format!("reading {}: {}", path, e))
     })?;
 
     // Collect all installed CPVs once for O(n) scanning.
     let installed: Vec<_> = vdb.packages().into_iter().collect();
 
     let mut orphaned: Vec<String> = Vec::new();
-    let mut ok: usize = 0;
+    let mut invalid: Vec<String> = Vec::new();
+    let mut kept: Vec<&str> = Vec::new();
 
     for line in content.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            kept.push(line);
+            continue;
+        }
+        // @set references: keep them, we don't validate sets yet.
+        if trimmed.starts_with('@') {
+            kept.push(line);
             continue;
         }
 
-        let dep = match Dep::parse(line) {
+        let dep = match Dep::parse(trimmed) {
             Ok(d) => d,
             Err(e) => {
-                eprintln!("warning: skipping invalid world entry '{line}': {e}");
+                eprintln!("warning: invalid world entry '{trimmed}': {e}");
+                invalid.push(trimmed.to_owned());
                 continue;
             }
         };
 
         if installed.iter().any(|pkg| dep_matches_cpv(&dep, pkg.cpv())) {
-            ok += 1;
+            kept.push(line);
         } else {
-            orphaned.push(line.to_owned());
+            orphaned.push(trimmed.to_owned());
         }
     }
 
-    if orphaned.is_empty() {
-        println!("World file is consistent ({ok} packages installed).");
+    if orphaned.is_empty() && invalid.is_empty() {
+        let ok = kept.iter().filter(|l| !l.trim().is_empty() && !l.trim().starts_with('#')).count();
+        println!("World file is consistent ({ok} entries).");
+        return Ok(());
+    }
+
+    for atom in &invalid {
+        println!("!!! '{atom}': invalid atom");
+    }
+    for atom in &orphaned {
+        println!("!!! '{atom}': not installed");
+    }
+
+    if fix {
+        let new_content = kept.join("\n") + "\n";
+        std::fs::write(&path, new_content)
+            .map_err(|e| Error::Other(format!("writing {path}: {e}")))?;
+        println!(
+            "Removed {} orphaned/invalid entr{} from {path}.",
+            orphaned.len() + invalid.len(),
+            if orphaned.len() + invalid.len() == 1 { "y" } else { "ies" }
+        );
     } else {
-        for atom in &orphaned {
-            println!("!!! {atom}: not installed");
-        }
         eprintln!(
-            "\n{} orphaned entr{} in {world_path} (installed: {ok})",
-            orphaned.len(),
-            if orphaned.len() == 1 { "y" } else { "ies" },
+            "\n{} issue{} found. Run with --fix to remove them.",
+            orphaned.len() + invalid.len(),
+            if orphaned.len() + invalid.len() == 1 { "" } else { "s" }
         );
     }
 

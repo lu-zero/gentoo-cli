@@ -190,18 +190,18 @@ fn run_maint(command: &Option<MaintCommand>, globals: &cli::Cli) -> Result<()> {
             let repo_path = camino::Utf8Path::new(&resolved);
             maint::moveinst::run(repo_path, &vdb)
         }
-        Some(MaintCommand::Revisions) => {
-            let vdb = open_vdb(globals)?;
-            maint::revisions::run(&vdb)
+        Some(MaintCommand::Revisions { repos }) => {
+            let root = globals.root.as_deref().map(camino::Utf8Path::new);
+            maint::revisions::run(repos, root)
         }
         Some(MaintCommand::Sync { repos }) => {
             eprintln!("emaint: sync repos={:?}", repos);
             Err(error::Error::NotImplemented("emaint sync".into()))
         }
-        Some(MaintCommand::World) => {
+        Some(MaintCommand::World { fix }) => {
             let vdb = open_vdb(globals)?;
             let root = globals.root.as_deref().map(camino::Utf8Path::new);
-            maint::world::run(&vdb, root)
+            maint::world::run(&vdb, *fix, root)
         }
     }
 }

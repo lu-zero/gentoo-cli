@@ -344,12 +344,20 @@ pub enum MaintCommand {
     Movebin,
     #[command(about = "Apply package moves to installed packages")]
     Moveinst,
-    #[command(about = "Purge repo revision history")]
-    Revisions,
+    #[command(about = "Purge repo revision history from repo_revisions")]
+    Revisions {
+        /// Purge only these repos (default: all)
+        #[arg(value_name = "REPO")]
+        repos: Vec<String>,
+    },
     #[command(about = "Sync repositories")]
     Sync { repos: Vec<String> },
-    #[command(about = "Fix problems in the world file")]
-    World,
+    #[command(about = "Check (and optionally fix) problems in the world file")]
+    World {
+        /// Remove orphaned entries from the world file
+        #[arg(short, long)]
+        fix: bool,
+    },
 }
 
 #[derive(Subcommand)]
