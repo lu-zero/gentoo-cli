@@ -232,10 +232,17 @@ pub enum Applet {
         target: Option<CleanTarget>,
     },
 
-    #[command(about = "Enable/disable/query USE flags")]
+    #[command(about = "Enable/disable/query USE flags in make.conf")]
     Use {
-        #[arg(trailing_var_arg = true)]
-        args: Vec<String>,
+        /// Add (enable) flags
+        #[arg(short = 'a', long = "add", value_name = "FLAG")]
+        add: Vec<String>,
+        /// Remove (disable) flags
+        #[arg(short = 'r', long = "remove", value_name = "FLAG")]
+        remove: Vec<String>,
+        /// Path to make.conf (default: /etc/portage/make.conf)
+        #[arg(long = "make-conf", value_name = "PATH")]
+        make_conf: Option<std::path::PathBuf>,
     },
 
     #[command(about = "Rebuild packages with broken shared library deps")]

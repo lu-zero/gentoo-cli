@@ -4,6 +4,7 @@ mod error;
 mod query;
 mod regen;
 mod search;
+mod use_flags;
 mod vdb;
 
 #[cfg(feature = "mimalloc")]
@@ -109,10 +110,11 @@ async fn run_applet(applet: &Applet, globals: &cli::Cli) -> Result<()> {
         }
         Applet::Query { command } => run_query(command, globals),
         Applet::Clean { target } => run_clean(target),
-        Applet::Use { args } => {
-            eprintln!("use: args={:?}", args);
-            Err(error::Error::NotImplemented("use".into()))
-        }
+        Applet::Use {
+            add,
+            remove,
+            make_conf,
+        } => use_flags::run(add, remove, make_conf.as_deref()),
         Applet::Revdep { args } => {
             eprintln!("revdep: args={:?}", args);
             Err(error::Error::NotImplemented("revdep".into()))
