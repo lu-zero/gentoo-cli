@@ -242,7 +242,7 @@ pub enum Applet {
         remove: Vec<String>,
         /// Path to make.conf (default: /etc/portage/make.conf)
         #[arg(long = "make-conf", value_name = "PATH")]
-        make_conf: Option<std::path::PathBuf>,
+        make_conf: Option<camino::Utf8PathBuf>,
     },
 
     #[command(about = "Rebuild packages with broken shared library deps")]

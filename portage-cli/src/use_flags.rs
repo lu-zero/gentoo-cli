@@ -1,4 +1,4 @@
-use std::path::Path;
+use camino::{Utf8Path, Utf8PathBuf};
 
 use portage_repo::{DEFAULT_MAKE_CONF, LEGACY_MAKE_CONF, MakeConf};
 
@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 /// Add and/or remove USE flags from make.conf, then show the result.
 ///
 /// With no flags to add or remove, just prints the current USE value.
-pub fn run(add: &[String], remove: &[String], make_conf: Option<&Path>) -> Result<()> {
+pub fn run(add: &[String], remove: &[String], make_conf: Option<&Utf8Path>) -> Result<()> {
     let path = resolve_path(make_conf)?;
 
     if add.is_empty() && remove.is_empty() {
@@ -15,7 +15,7 @@ pub fn run(add: &[String], remove: &[String], make_conf: Option<&Path>) -> Resul
     }
 
     let mut mc = MakeConf::load(&path)
-        .map_err(|e| Error::Other(format!("reading {}: {e}", path.display())))?;
+        .map_err(|e| Error::Other(format!("reading {}: {e}", path)))?;
 
     let current = mc.get("USE").unwrap_or("").to_string();
     let mut flags: Vec<String> = current.split_whitespace().map(str::to_string).collect();
@@ -37,29 +37,29 @@ pub fn run(add: &[String], remove: &[String], make_conf: Option<&Path>) -> Resul
     let new_use = flags.join(" ");
     mc.set("USE", &new_use);
     mc.save(&path)
-        .map_err(|e| Error::Other(format!("writing {}: {e}", path.display())))?;
+        .map_err(|e| Error::Other(format!("writing {}: {e}", path)))?;
 
     println!("USE=\"{}\"", new_use);
     Ok(())
 }
 
-fn show(path: &Path) -> Result<()> {
+fn show(path: &Utf8Path) -> Result<()> {
     let mc = MakeConf::load(path)
-        .map_err(|e| Error::Other(format!("reading {}: {e}", path.display())))?;
+        .map_err(|e| Error::Other(format!("reading {}: {e}", path)))?;
 
     match mc.get("USE") {
         Some(val) => println!("USE=\"{}\"", val),
-        None => println!("USE not set in {}", path.display()),
+        None => println!("USE not set in {}", path),
     }
     Ok(())
 }
 
-fn resolve_path(override_path: Option<&Path>) -> Result<std::path::PathBuf> {
+fn resolve_path(override_path: Option<&Utf8Path>) -> Result<Utf8PathBuf> {
     if let Some(p) = override_path {
         return Ok(p.to_owned());
     }
     for candidate in [DEFAULT_MAKE_CONF, LEGACY_MAKE_CONF] {
-        let p = Path::new(candidate);
+        let p = Utf8Path::new(candidate);
         if p.exists() {
             return Ok(p.to_owned());
         }
