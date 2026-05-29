@@ -90,27 +90,36 @@ impl UseDb {
         Ok(Self { global, local })
     }
 
-    /// Serialise the local USE flag table to `profiles/use.local.desc` format.
+    /// Serialise the local USE flag table to any `Write` sink in
+    /// `profiles/use.local.desc` format.
     ///
     /// Entries are sorted by `cat/pkg` then flag name, matching the layout
     /// produced by `pmaint regen`.
-    pub fn write_use_local_desc(&self, path: &Utf8Path) -> Result<()> {
-        let mut out = String::from(
-            "# This file is deprecated as per GLEP 56 in favor of metadata.xml.\n\
-             # Please add your descriptions to your package's metadata.xml ONLY.\n\
-             # * generated automatically using em maint *\n",
-        );
-
+    pub fn write_use_local_desc_to<W: std::io::Write>(&self, mut w: W) -> std::io::Result<()> {
+        w.write_all(
+            b"# This file is deprecated as per GLEP 56 in favor of metadata.xml.\n\
+              # Please add your descriptions to your package's metadata.xml ONLY.\n\
+              # * generated automatically using em maint *\n",
+        )?;
         for (cpn, flags) in &self.local {
             for (flag, desc) in flags {
-                out.push_str(&format!("{cpn}:{flag} - {desc}\n"));
+                writeln!(w, "{cpn}:{flag} - {desc}")?;
             }
         }
+        Ok(())
+    }
 
-        std::fs::write(path, out).map_err(|e| Error::Io {
+    /// Serialise the local USE flag table to `profiles/use.local.desc`.
+    pub fn write_use_local_desc(&self, path: &Utf8Path) -> Result<()> {
+        let f = std::fs::File::create(path).map_err(|e| Error::Io {
             path: path.to_path_buf().into_std_path_buf(),
             source: e,
-        })
+        })?;
+        self.write_use_local_desc_to(std::io::BufWriter::new(f))
+            .map_err(|e| Error::Io {
+                path: path.to_path_buf().into_std_path_buf(),
+                source: e,
+            })
     }
 }
 

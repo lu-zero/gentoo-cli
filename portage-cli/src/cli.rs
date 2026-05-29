@@ -345,7 +345,11 @@ pub enum MaintCommand {
     #[command(about = "Apply package moves to installed packages")]
     Moveinst,
     #[command(about = "Regenerate profiles/use.local.desc from metadata.xml")]
-    RegenUse,
+    RegenUse {
+        /// Write output here instead of profiles/use.local.desc ('-' for stdout)
+        #[arg(short, long, value_name = "PATH")]
+        output: Option<String>,
+    },
     #[command(about = "Purge repo revision history from repo_revisions")]
     Revisions {
         /// Purge only these repos (default: all)

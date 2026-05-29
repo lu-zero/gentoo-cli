@@ -190,22 +190,35 @@ fn run_maint(command: &Option<MaintCommand>, globals: &cli::Cli) -> Result<()> {
             let repo_path = camino::Utf8Path::new(&resolved);
             maint::moveinst::run(repo_path, &vdb)
         }
-        Some(MaintCommand::RegenUse) => {
+        Some(MaintCommand::RegenUse { output }) => {
             let resolved = globals.repo_path();
             let repo_path = camino::Utf8Path::new(&resolved);
             let repo = portage_repo::Repository::open(repo_path)
                 .map_err(|e| error::Error::Other(e.to_string()))?;
             let use_db = portage_repo::UseDb::build_local_from_repo(&repo)
                 .map_err(|e| error::Error::Other(e.to_string()))?;
-            let out_path = repo.path().join("profiles/use.local.desc");
-            use_db
-                .write_use_local_desc(&out_path)
-                .map_err(|e| error::Error::Other(e.to_string()))?;
-            let count: usize = use_db
-                .packages_with_local_flags()
-                .map(|_| 1)
-                .sum();
-            println!("Wrote {count} packages to {out_path}.");
+            let count: usize = use_db.packages_with_local_flags().count();
+            match output.as_deref() {
+                Some("-") => {
+                    use_db
+                        .write_use_local_desc_to(std::io::stdout().lock())
+                        .map_err(|e| error::Error::Other(e.to_string()))?;
+                }
+                Some(path) => {
+                    let out_path = camino::Utf8Path::new(path);
+                    use_db
+                        .write_use_local_desc(out_path)
+                        .map_err(|e| error::Error::Other(e.to_string()))?;
+                    eprintln!("Wrote {count} packages to {path}.");
+                }
+                None => {
+                    let out_path = repo.path().join("profiles/use.local.desc");
+                    use_db
+                        .write_use_local_desc(&out_path)
+                        .map_err(|e| error::Error::Other(e.to_string()))?;
+                    eprintln!("Wrote {count} packages to {out_path}.");
+                }
+            }
             Ok(())
         }
         Some(MaintCommand::Revisions { repos }) => {
