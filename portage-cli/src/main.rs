@@ -197,7 +197,12 @@ fn run_maint(command: &Option<MaintCommand>, globals: &cli::Cli) -> Result<()> {
                 .map_err(|e| error::Error::Other(e.to_string()))?;
             let use_db = portage_repo::UseDb::build_local_from_repo(&repo)
                 .map_err(|e| error::Error::Other(e.to_string()))?;
-            let count: usize = use_db.packages_with_local_flags().count();
+            let pkg_count = use_db.packages_with_local_flags().count();
+            let flag_count: usize = use_db
+                .packages_with_local_flags()
+                .filter_map(|cpn| use_db.local_flags(cpn))
+                .map(|m| m.len())
+                .sum();
             match output.as_deref() {
                 Some("-") => {
                     use_db
@@ -209,14 +214,14 @@ fn run_maint(command: &Option<MaintCommand>, globals: &cli::Cli) -> Result<()> {
                     use_db
                         .write_use_local_desc(out_path)
                         .map_err(|e| error::Error::Other(e.to_string()))?;
-                    eprintln!("Wrote {count} packages to {path}.");
+                    eprintln!("Wrote {flag_count} use flags ({pkg_count} packages) to {path}.");
                 }
                 None => {
                     let out_path = repo.path().join("profiles/use.local.desc");
                     use_db
                         .write_use_local_desc(&out_path)
                         .map_err(|e| error::Error::Other(e.to_string()))?;
-                    eprintln!("Wrote {count} packages to {out_path}.");
+                    eprintln!("Wrote {flag_count} use flags ({pkg_count} packages) to {out_path}.");
                 }
             }
             Ok(())
